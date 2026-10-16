@@ -14,21 +14,24 @@ START_COINS = 5
 QUERY_TIMEOUT_MS = int(os.getenv("QUERY_TIMEOUT_MS", "10000"))  # FalkorDB's default is 1 s
 PLAYER_ID = re.compile(r"^[a-z0-9]{6,32}$")
 
-_client = FalkorDB(
-    host=os.getenv("FALKORDB_HOST", "127.0.0.1"),
-    port=int(os.getenv("FALKORDB_PORT", "6379")),
-    username=os.getenv("FALKORDB_USERNAME") or None,
-    password=os.getenv("FALKORDB_PASSWORD") or None,
-    ssl=os.getenv("FALKORDB_SSL", "").lower() in ("1", "true", "yes"),
-)
+_client: FalkorDB | None = None  # connected on first use, so a database outage doesn't break importing the app
+
+
+def client() -> FalkorDB:
+    global _client
+    if _client is None:
+        _client = FalkorDB(
+            host=os.getenv("FALKORDB_HOST", "127.0.0.1"),
+            port=int(os.getenv("FALKORDB_PORT", "6379")),
+            username=os.getenv("FALKORDB_USERNAME") or None,
+            password=os.getenv("FALKORDB_PASSWORD") or None,
+            ssl=os.getenv("FALKORDB_SSL", "").lower() in ("1", "true", "yes"),
+        )
+    return _client
 # ponytail: per-world lock in one process; needs a distributed lock if the backend scales out
 _locks: dict[str, threading.Lock] = {}
 _locks_guard = threading.Lock()
 _copy_lock = threading.Lock()
-
-
-def client() -> FalkorDB:
-    return _client
 
 
 def graph_name(player: str) -> str:
@@ -38,7 +41,7 @@ def graph_name(player: str) -> str:
 
 
 def graph_exists(name: str) -> bool:
-    return name in _client.list_graphs()
+    return name in client().list_graphs()
 
 
 class World:
@@ -46,7 +49,7 @@ class World:
 
     def __init__(self, name: str):
         self.name = name
-        self.g = _client.select_graph(name)
+        self.g = client().select_graph(name)
         self.debug: list[dict] = []
         self.later: list[tuple] = []  # AI wording jobs, run after the request (engine/gossip.polish_later)
 
@@ -81,7 +84,7 @@ class World:
         with _copy_lock:
             for attempt in range(5):
                 try:
-                    _client.select_graph(TEMPLATE).copy(w.name)
+                    client().select_graph(TEMPLATE).copy(w.name)
                     break
                 except Exception as e:
                     if "fork" in str(e) and attempt < 4:
