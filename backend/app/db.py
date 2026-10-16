@@ -19,6 +19,7 @@ _client = FalkorDB(
     port=int(os.getenv("FALKORDB_PORT", "6379")),
     username=os.getenv("FALKORDB_USERNAME") or None,
     password=os.getenv("FALKORDB_PASSWORD") or None,
+    ssl=os.getenv("FALKORDB_SSL", "").lower() in ("1", "true", "yes"),
 )
 # ponytail: per-world lock in one process; needs a distributed lock if the backend scales out
 _locks: dict[str, threading.Lock] = {}
@@ -71,6 +72,9 @@ class World:
     @classmethod
     def create(cls, player: str) -> "World":
         """A fresh village for this player: GRAPH.COPY of the template, then the player joins."""
+        if not graph_exists(TEMPLATE):  # serverless hosts may skip the startup hook that seeds it
+            from seed.seed import seed
+            seed()
         w = cls.for_player(player)
         w.delete()
         # GRAPH.COPY forks the server; two at once fail with "could not fork", so serialise and retry
@@ -80,9 +84,13 @@ class World:
                     _client.select_graph(TEMPLATE).copy(w.name)
                     break
                 except Exception as e:
-                    if "fork" not in str(e) or attempt == 4:
-                        raise
-                    time.sleep(0.1 * (attempt + 1))
+                    if "fork" in str(e) and attempt < 4:
+                        time.sleep(0.1 * (attempt + 1))
+                        continue
+                    # GRAPH.COPY unavailable (some hosted plans): build the village straight from the seed data
+                    from seed.seed import seed
+                    seed(w.name)
+                    break
         w = cls.for_player(player)
         w.q("join", player=player, tick=w.one("world")["tick"], coins=START_COINS)
         return w
