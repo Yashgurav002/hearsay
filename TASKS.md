@@ -7,6 +7,7 @@ Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its che
 **Done:** H00–H12, H15, H16. Backend, frontend build, measurements and README are done. 14 tests pass (`python -m pytest backend/tests`). `docker compose up --build` verified from the repo: it seeds, serves the UI on :8000 and the API answers.
 **Game (H19):** done. Canvas 2D village, 7-step quest, Why? comic strip, achievements, win screen; the full story was played end to end in headless Chrome (Playwright, script in the session scratchpad) with zero console errors. Screenshots in `docs/screenshots/`.
 **AI:** the key is in `.env` (gitignored; moved out of `.env.example`). AI Studio Gemma 4 is slow and flaky (see DECISIONS), so local play uses Ollama `gemma3:4b`. Real-model grounding: 0/50 invented names.
+**3D (H20):** done. Third-person Three.js village with a 2D toggle; tested headless with zero errors.
 **Next up:** you play it and give feedback → deploy (H17; hosted AI = AI Studio Gemma 4 with template fallback) → video/blog (H18).
 **Waiting on the user:**
 - A public GitHub repo (H16 links), plus FalkorDB Cloud + Render accounts for H17.
@@ -61,3 +62,5 @@ Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its che
 
 - [x] **H19 Gamify** — intro screen, walkable canvas village (WASD/arrows/click), villagers that walk/sleep/gossip in speech bubbles, quest card (7 steps), mood faces per villager, context action bar with number keys, Space to wait, skip to evening/night/morning, dialogue with quick replies, gifts and whispers, Why? comic strip, Spyglass drawer (graph, spymaster, inspector), toasts, 7 achievements, win screen with stats. Backend: coins, gift cost, bribe rule.
   Checks: full arc playable start → win in Chrome with no errors ✔; phone width with no sideways scroll ✔; 15 tests ✔.
+- [x] **H20 3D third-person** — Three.js village from primitives (buildings, stalls, well, gate towers, trees, cottages), characters with role props (hat, helmet + spear, hammer, apron, robe, cap, backpack), leg-swing walk, mood rings, day/dusk/night sky + glowing windows, DOM-overlay name tags/bubbles/prompts, third-person camera (WASD relative to camera, drag to orbit, scroll zoom, click to walk), solid buildings that fade when blocking the camera, 2D toggle + WebGL fallback.
+  Checks: 3D playtest (walk, steal, evening gossip, orbit) with no errors ✔; 2D full arc still wins ✔; 15 tests ✔.

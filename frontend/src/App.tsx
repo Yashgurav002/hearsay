@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, getPlayer, setPlayer, type Debug, type Hop, type State, type Why } from './api'
 import Dialogue, { type Msg } from './Dialogue'
+import Game3D from './Game3D'
 import GameCanvas, { type Bubble } from './GameCanvas'
 import { type GraphHandle } from './GossipGraph'
 import { QUESTS, TROPHIES, loadProgress, newProgress, saveProgress, type Flags, type Progress } from './quests'
@@ -38,6 +39,8 @@ export default function App() {
   const [plan, setPlan] = useState('')
   const [debug, setDebug] = useState<Debug | null>(null)
   const [spawn, setSpawn] = useState(0)
+  const [view, setView] = useState<'3d' | '2d'>(() => { try { return localStorage.getItem('hearsay_view') === '2d' ? '2d' : '3d' } catch { return '3d' } })
+  const switchView = (v: '3d' | '2d') => { setView(v); setSpawn(n => n + 1); try { localStorage.setItem('hearsay_view', v) } catch { /* ignore */ } }
   const [error, setError] = useState('')
   const graph = useRef<GraphHandle>(null)
   const stopFf = useRef(false)
@@ -264,6 +267,7 @@ export default function App() {
         <span className="spacer" />
         <button className="ghost" onClick={() => setHelp(true)}>❓ How to play</button>
         <button className="ghost" onClick={() => setTrophies(true)}>🏆 {prog.trophies.length}/{TROPHIES.length}</button>
+        <button className="ghost" onClick={() => switchView(view === '3d' ? '2d' : '3d')} title="Switch between the 3D and the 2D view">{view === '3d' ? '🗺️ 2D map' : '🧊 3D view'}</button>
         <button className="ghost" onClick={() => setSpy(true)}>🔭 Spyglass</button>
         <button className="ghost" onClick={() => { if (window.confirm('Start a new game? This village will forget you.')) start(true) }}>↺ New game</button>
       </header>
@@ -294,8 +298,11 @@ export default function App() {
         </aside>
 
         <main className="center">
-          <GameCanvas st={st} bubbles={bubbles} frozen={modal || busy && ff} spawn={spawn}
-                      onZone={setZone} onNear={setNear} onTalk={id => setTalkTo(id)} />
+          {view === '3d'
+            ? <Game3D st={st} bubbles={bubbles} frozen={modal || busy && ff} spawn={spawn}
+                      onZone={setZone} onNear={setNear} onTalk={id => setTalkTo(id)} onFail={() => switchView('2d')} />
+            : <GameCanvas st={st} bubbles={bubbles} frozen={modal || busy && ff} spawn={spawn}
+                          onZone={setZone} onNear={setNear} onTalk={id => setTalkTo(id)} />}
           <div className="actionbar">
             {!inPlace && <span className="hint">{zone === null ? 'Walk into a place to do things there.' : 'Arriving…'}</span>}
             {actions.map((a, i) => (
@@ -363,7 +370,7 @@ function Intro({ canContinue, onStart, error }: { canContinue: boolean; onStart:
           <div><span>🗣️</span><b>They gossip</b><p>Stories spread from friend to friend, and get worse with every retelling.</p></div>
           <div><span>🔍</span><b>Ask “Why?”</b><p>Anyone can show you exactly who told them what.</p></div>
         </div>
-        <p className="controls">Move: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows / click · Talk: <kbd>E</kbd> · Wait: <kbd>Space</kbd> · Actions: <kbd>1</kbd>–<kbd>6</kbd></p>
+        <p className="controls">Move: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows / click · Look around: drag · Talk: <kbd>E</kbd> · Wait: <kbd>Space</kbd> · Actions: <kbd>1</kbd>–<kbd>6</kbd></p>
         <div className="row center">
           <button className="big" onClick={() => onStart(true)}>▶ New game</button>
           {canContinue && <button className="big ghost" onClick={() => onStart(false)}>Continue</button>}
@@ -382,7 +389,7 @@ function HowTo({ onClose }: { onClose: () => void }) {
         <h2>❓ How to play</h2>
         <ul className="howto">
           <li><b>Follow the quest</b> (top left). It walks you through everything.</li>
-          <li><b>Walk</b> with WASD / arrow keys, or click where you want to go. Entering a place takes an hour.</li>
+          <li><b>Walk</b> with WASD / arrow keys, or click where you want to go. In 3D, drag to look around and scroll to zoom. Entering a place takes an hour.</li>
           <li><b>Do things</b> with the buttons under the map (or number keys). Whoever is in the same place <i>witnesses</i> it.</li>
           <li><b>Time</b> moves one hour per action. Wait with <kbd>Space</kbd>, or skip to the evening, when everyone meets at the inn and gossips.</li>
           <li><b>Gossip</b> travels only between people who trust each other, and gets exaggerated. Watch the speech bubbles and the 📣 Rumour mill.</li>

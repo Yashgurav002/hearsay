@@ -4,10 +4,10 @@
 
 > Steal an apple. Only Old Tomas sees it. That evening at the inn, Tomas and Pip tell Bertha, and Bertha tells Captain Ilsa: *"took an apple"* → *"stole a basket"* → *"robbed the market"*. Next morning the guard, who never saw a thing, blocks the gate. Ask her why: *"I heard it from Bertha; Bertha heard it from Old Tomas; Old Tomas saw it first-hand."* The path lights up in the graph, with the Cypher query that found it.
 
-![The rumour spreading at the inn](docs/screenshots/gossip.png)
+![Third-person 3D: the inn crowd at dusk, mood rings at their feet](docs/screenshots/3d-inn.png)
 
 ## How to play
-Walk around a tiny village (WASD, arrow keys, or click/tap). A 7-step quest teaches everything:
+Walk around a tiny low-poly 3D village in third person (WASD/arrows to move, drag to look around, scroll to zoom, click to walk; a 2D map view is one click away). A 7-step quest teaches everything:
 1. Arrive hungry with 5 coins and walk to the market. 2. Steal an apple (Old Tomas sees it).
 3. Skip to the evening: watch the story spread at the inn in speech bubbles, getting worse each time.
 4. Try to leave: the guard, who never saw a thing, blocks the gate. 5. Ask her **"Why?"** to see the exact chain of who told whom.
@@ -144,4 +144,4 @@ All villagers, places and events are fictional and were written for this project
 Built with **Claude Code** (Anthropic): it turned the PRD into tasks ([`TASKS.md`](TASKS.md)) and wrote most of the backend, queries, tests and frontend, verifying every Cypher query against a live FalkorDB. In-game, villager voices, retellings, impressions and spymaster advice use **Gemma** (Gemma 3 4B on Ollama locally, Gemma 4 on Google AI Studio when hosted; templates if neither is available). *[Author: add which parts you wrote or reviewed yourself.]*
 
 ## Credits
-FalkorDB and its Python client · FastAPI · React · Vite · react-force-graph · Gemma. MIT licence.
+FalkorDB and its Python client · FastAPI · React · Vite · Three.js · react-force-graph · Gemma. All 3D art is built from primitives in code; no external assets. MIT licence.

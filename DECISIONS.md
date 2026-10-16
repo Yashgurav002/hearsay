@@ -36,4 +36,6 @@ One line each: what, why.
 - Background AI rewording runs on one worker queue (one call at a time), so a live reply waits behind at most one background call.
 - Chrome's `scrollIntoView()` now returns a Promise; an arrow-body `useEffect` returned it and React crashed treating it as a cleanup. Effects always use block bodies.
 - Skip buttons stop at 17:00 (evening), 22:00 (night) and 07:00 (morning): the guard only visits the inn 20–22, so skipping to 17:00 alone left new players stuck.
+- 3D (2026-10-17): Three.js r169, third-person camera. Everything is primitives in code (no models, no textures except canvas-drawn signs), so it's free and has no licences. It implements the same props as the 2D canvas, so the game logic is shared and 2D is a toggle and the no-WebGL fallback. Names, bubbles and prompts are a DOM overlay projected from 3D (crisp text, cheap). Buildings are solid (circle push-out) and fade when they block the camera. Frame time is capped at 0.1 s so walking speed stays right down to 10 fps.
+- FalkorDB's default query TIMEOUT is 1 s; under CPU contention Q-OPINION hit it and a request 500'd. Queries now pass `timeout=10000`, and `state()` reads every villager's rules in one query (13 → 7 queries).
 - Backend serves the built frontend from `frontend/dist`, so deployment is one container + FalkorDB.

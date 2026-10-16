@@ -11,6 +11,7 @@ QUERY_DIR = Path(__file__).resolve().parent.parent / "queries"
 QUERIES = {p.stem: p.read_text(encoding="utf-8") for p in QUERY_DIR.glob("*.cypher")}
 TEMPLATE = "hearsay_template"
 START_COINS = 5
+QUERY_TIMEOUT_MS = int(os.getenv("QUERY_TIMEOUT_MS", "10000"))  # FalkorDB's default is 1 s
 PLAYER_ID = re.compile(r"^[a-z0-9]{6,32}$")
 
 _client = FalkorDB(
@@ -58,7 +59,7 @@ class World:
 
     def q(self, name: str, **params) -> list[dict]:
         t = time.perf_counter()
-        res = self.g.query(QUERIES[name], params)
+        res = self.g.query(QUERIES[name], params, timeout=QUERY_TIMEOUT_MS)
         self.debug.append({"name": name, "ms": round((time.perf_counter() - t) * 1000, 2)})
         cols = [h[1] for h in res.header]
         return [dict(zip(cols, row)) for row in res.result_set]

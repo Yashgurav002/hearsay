@@ -48,8 +48,9 @@ def respond(w: World, t0: float, **body) -> dict:
 def state(w: World, player: str) -> dict:
     st = w.one("world")
     villagers = w.q("state")
+    rules = {v["id"]: [{"action": a} for a in v["actions"]] for v in w.q("villagers")}  # one query for everyone's rules
     for v in villagers:
-        v["opinion"] = memory.opinion(w, v["id"], player)
+        v["opinion"] = memory.opinion(w, v["id"], player, rules[v["id"]])
     return {"tick": st["tick"], "hour": st["tick"] % 24, "day": st["tick"] // 24 + 1, "place": st["place"],
             "coins": st["coins"],
             "villagers": villagers, "places": [{"id": k, "name": n} for k, n in game.PLACES.items()],
