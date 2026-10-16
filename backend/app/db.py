@@ -21,6 +21,7 @@ _client = FalkorDB(
 # ponytail: per-world lock in one process; needs a distributed lock if the backend scales out
 _locks: dict[str, threading.Lock] = {}
 _locks_guard = threading.Lock()
+_copy_lock = threading.Lock()
 
 
 def client() -> FalkorDB:
@@ -69,7 +70,16 @@ class World:
         """A fresh village for this player: GRAPH.COPY of the template, then the player joins."""
         w = cls.for_player(player)
         w.delete()
-        _client.select_graph(TEMPLATE).copy(w.name)
+        # GRAPH.COPY forks the server; two at once fail with "could not fork", so serialise and retry
+        with _copy_lock:
+            for attempt in range(5):
+                try:
+                    _client.select_graph(TEMPLATE).copy(w.name)
+                    break
+                except Exception as e:
+                    if "fork" not in str(e) or attempt == 4:
+                        raise
+                    time.sleep(0.1 * (attempt + 1))
         w = cls.for_player(player)
         w.q("join", player=player, tick=w.one("world")["tick"])
         return w
