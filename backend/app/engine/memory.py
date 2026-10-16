@@ -92,6 +92,7 @@ def consolidate(w: World, player: str, villager: dict, tick: int) -> str | None:
     facts = "; ".join(f"{b['story']} (confidence {b['confidence']:.2f}, told by {', '.join(b['told_by']) or 'saw it'})" for b in beliefs)
     prompt = (f"In one sentence, summarise what {villager['name']} thinks of the traveller, based ONLY on: {facts}. "
               f"Overall opinion score {op} (-1 hates, +1 loves). Mention the main source of the opinion. Address the traveller as 'you'.")
-    text = llm.chat(prompt, fallback, max_tokens=60, debug=w.debug)
-    w.q("impression", villager=villager["id"], player=player, text=text, tick=tick)
-    return text
+    w.q("impression", villager=villager["id"], player=player, text=fallback, tick=tick)
+    if llm.enabled():  # AI wording replaces the template in the background (gossip.polish_later)
+        w.later.append((None, prompt, "impression", {"villager": villager["id"], "player": player, "tick": tick}))
+    return fallback

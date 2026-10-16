@@ -30,4 +30,11 @@ Theft at the market at 11:00 (only Old Tomas sees it), then up to 48 hours of go
 - Severity on arrival: mean **2.54** (1: 2 runs, 2: 27, 3: 13, 4: 8). "Took an apple" usually reaches the guard as "stole a basket of apples" or worse.
 
 ## Grounding
-`test_no_invented_knowledge` (`scripts/grounding_check.py`): 50 conversations across the village after the theft spreads. With templates, invented-name rate **0 / 50**. To measure the real model, run `python scripts/grounding_check.py 50` with `LLM_API_KEY` set. *(Not yet measured with the model.)*
+`test_no_invented_knowledge` (`scripts/grounding_check.py`): 50 conversations across the village after the theft spreads. With templates: **0 / 50**. With the real model (Ollama `gemma3:4b`, 2026-10-16): **0 / 50** replies named a villager outside the speaker's graph context (236 s for 50 conversations, about 4.7 s each). Rerun with `python scripts/grounding_check.py 50`.
+
+## AI provider latency (2026-10-16)
+| Model | Where | Per call | Notes |
+|---|---|---|---|
+| `gemma3:4b` | local Ollama | ~1–4 s | used for local play; grounded |
+| `gemma-4-26b-a4b-it` | Google AI Studio | 14–34 s | always thinks first; about half the calls failed (500 or timeout) |
+| `gemma-4-31b-it` | Google AI Studio | ~78 s | too slow for replies |

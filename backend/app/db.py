@@ -45,6 +45,7 @@ class World:
         self.name = name
         self.g = _client.select_graph(name)
         self.debug: list[dict] = []
+        self.later: list[tuple] = []  # AI wording jobs, run after the request (engine/gossip.polish_later)
 
     @classmethod
     def for_player(cls, player: str) -> "World":

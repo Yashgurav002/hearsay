@@ -14,7 +14,7 @@
 docker compose up --build
 # open http://localhost:8000   (FalkorDB Browser: http://localhost:3000)
 ```
-The app seeds the template village into FalkorDB on first start. With no `LLM_API_KEY`, villagers speak from templates built from the same graph facts. To turn on AI voices, put `LLM_API_KEY=<Google AI Studio key>` in a `.env` file next to `docker-compose.yml` (see `.env.example`). Any OpenAI-compatible endpoint works, e.g. Ollama: `LLM_BASE_URL=http://host.docker.internal:11434/v1`.
+The app seeds the template village into FalkorDB on first start. With no `LLM_API_KEY`, villagers speak from templates built from the same graph facts. To turn on AI voices, copy `.env.example` to `.env` (gitignored) and set `LLM_API_KEY=<Google AI Studio key>`. Any OpenAI-compatible endpoint works. For fast local voices use Ollama (`ollama pull gemma3:4b`): set `LLM_BASE_URL=http://localhost:11434/v1` and `LLM_MODEL=gemma3:4b` for local dev, or `DOCKER_LLM_BASE_URL=http://host.docker.internal:11434/v1` and `DOCKER_LLM_MODEL=gemma3:4b` for Compose. Gemma 4 on AI Studio works but is slow (14–34 s per call), so retellings and impressions are reworded in the background.
 
 ### Local development
 ```bash
@@ -123,13 +123,13 @@ From [`docs/results.md`](docs/results.md), measured on a laptop:
 - **500 player worlds alive in one FalkorDB instance**, 16 ticking in parallel: Q-BELIEFS/Q-OPINION p50 **1.1 ms**, p95 **2.3 ms**; flat from 10 to 500 worlds.
 - `GET /api/why`: **7.7 ms** end to end (Q-WHY 2.4 ms).
 - Over 50 seeds, the theft reached the guard every time, median **9 hours**, arriving at mean severity **2.5**.
-- Grounding: **0 / 50** replies named a villager outside the speaker's graph context (templates; see results.md for the model run).
+- Grounding: **0 / 50** replies from the real model (Gemma 3 4B) named a villager outside the speaker's graph context.
 
 ## Data
 All villagers, places and events are fictional and were written for this project. Players are random anonymous IDs. No personal or real-world data is used.
 
 ## AI assistance disclosure
-Built with **Claude Code** (Anthropic): it turned the PRD into tasks ([`TASKS.md`](TASKS.md)) and wrote most of the backend, queries, tests and frontend, verifying every Cypher query against a live FalkorDB. In-game, villager voices, retellings, impressions and spymaster advice use **Gemma** via Google AI Studio (optional; templates otherwise). *[Author: add which parts you wrote or reviewed yourself.]*
+Built with **Claude Code** (Anthropic): it turned the PRD into tasks ([`TASKS.md`](TASKS.md)) and wrote most of the backend, queries, tests and frontend, verifying every Cypher query against a live FalkorDB. In-game, villager voices, retellings, impressions and spymaster advice use **Gemma** (Gemma 3 4B on Ollama locally, Gemma 4 on Google AI Studio when hosted; templates if neither is available). *[Author: add which parts you wrote or reviewed yourself.]*
 
 ## Credits
 FalkorDB and its Python client · FastAPI · React · Vite · react-force-graph · Gemma. MIT licence.

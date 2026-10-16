@@ -26,4 +26,8 @@ One line each: what, why.
 
 ## Stack
 - AI: one OpenAI-compatible client via httpx (`LLM_BASE_URL`/`LLM_API_KEY`/`LLM_MODEL`), default Gemma on Google AI Studio. Every call has a template fallback; failures aren't cached.
+- AI Studio no longer serves Gemma 3 (404); this key has `gemma-4-26b-a4b-it` and `gemma-4-31b-it`. Gemma 4 always emits a `<thought>` block first (can't be disabled), so `llm.py` strips it, adds a 2048-token thinking budget, and treats "thought but no answer" as a failure.
+- Measured on AI Studio (2026-10-16): 26B-A4B took 14–34 s per call and about half the calls failed (HTTP 500 or timeout); 31B took ~78 s. Too slow for live replies, so local play uses Ollama `gemma3:4b` (~1–4 s, grounded). `gemma3:1b` invented a "Sheriff", so it's out.
+- Retellings and nightly impressions are written with template text inside the tick; a background thread swaps in the AI wording afterwards (`gossip.polish_later`, Q-POLISH). Ticks stay fast and deterministic; only the wording changes.
+- `.env` is loaded by `backend/app/__init__.py` (stdlib, never overrides real env vars). Compose uses separate `DOCKER_LLM_*` variables so a local `localhost` Ollama URL doesn't leak into the container.
 - Backend serves the built frontend from `frontend/dist`, so deployment is one container + FalkorDB.

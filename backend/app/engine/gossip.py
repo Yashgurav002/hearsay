@@ -2,6 +2,7 @@
 Randomness comes from Random(f"{seed}:{tick}"), so the same seed and actions give the same spread."""
 import json
 import random
+import threading
 
 from .. import llm
 from ..db import World
@@ -19,13 +20,27 @@ def positions(villagers, hour: int) -> list[dict]:
     return out
 
 
-def retell(teller: dict, ladder: str, severity: int, debug: list) -> str:
+def retell(teller: dict, ladder: str, severity: int) -> tuple[tuple, str, str]:
+    """(cache key, prompt, template wording) for one retelling."""
     fallback = f"I heard {story(ladder, severity)}."
     prompt = (f"Rewrite this as {teller['name']} would say it in passing, in one short sentence. "
               f"Call the person 'the traveller'.\n"
               f"Story to tell (do not make it worse or better than this): \"{story(ladder, severity)}\"\n"
               f"Personality: {teller['persona']}")
-    return llm.cached((ladder, severity, teller["id"]), prompt, fallback, debug)
+    return (ladder, severity, teller["id"]), prompt, fallback
+
+
+def polish_later(name: str, jobs: list[tuple]) -> None:
+    """The model takes seconds per call, so ticks use template wording and a background thread
+    swaps in the AI phrasing afterwards. Only text changes, so the spread stays deterministic."""
+    def work():
+        for key, prompt, query, params in jobs:
+            text = llm.cached(key, prompt, None) if key else llm.chat(prompt, None, max_tokens=60)
+            if text:
+                w = World(name)
+                with w.lock():
+                    w.q(query, **params, text=text)
+    threading.Thread(target=work, daemon=True).start()
 
 
 def tick_once(w: World) -> list[dict]:
@@ -53,8 +68,12 @@ def tick_once(w: World) -> list[dict]:
                              "text": None})
                 continue
             sev = min(5, c["severity"] + 1) if rng.random() < teller["exaggeration"] else c["severity"]
-            text = retell(teller, c["ladder"], sev, w.debug)
-            w.q("hop", listener=p["listener"], src=c["rumour"], event=c["event"], id=f"{c['event']}:{p['listener']}",
+            key, prompt, fallback = retell(teller, c["ladder"], sev)
+            text = llm.peek(key) or fallback
+            rid = f"{c['event']}:{p['listener']}"
+            if text == fallback and llm.enabled():
+                w.later.append((key, prompt, "set_rumour_text", {"id": rid}))
+            w.q("hop", listener=p["listener"], src=c["rumour"], event=c["event"], id=rid,
                 text=text, severity=sev, sentiment=rumour_sentiment(c["ladder"], sev), hops=c["hops"] + 1,
                 conf=incoming, tick=tick, place=p["place"])
             hops.append({**hop, "kind": "hop", "severity": sev, "confidence": incoming, "text": text})
@@ -91,6 +110,9 @@ def advance(w: World, ticks: int = 1) -> list[dict]:
     hops = []
     for _ in range(ticks):
         hops += tick_once(w)
+    if w.later:
+        polish_later(w.name, w.later)
+        w.later = []
     return hops
 
 

@@ -2,13 +2,13 @@
 
 Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its checks pass**. Status: `[ ]` todo · `[~]` in progress · `[x]` done.
 
-## Where we are (updated 2026-10-16, late night)
+## Where we are (updated 2026-10-17, early morning)
 
 **Done:** H00–H12, H15, H16. Backend, frontend build, measurements and README are done. 14 tests pass (`python -m pytest backend/tests`). `docker compose up --build` verified from the repo: it seeds, serves the UI on :8000 and the API answers.
 **In progress:** H13/H14: the UI builds and the API flow is verified over HTTP, but it hasn't been played in a browser yet (the Chrome extension wasn't connected).
-**Next up:** play the wow moment in the browser and fix UI issues → measure grounding with the real model → deploy (H17) → video/blog (H18).
+**AI:** the key is in `.env` (gitignored; moved out of `.env.example`). AI Studio Gemma 4 is slow and flaky (see DECISIONS), so local play uses Ollama `gemma3:4b`. Real-model grounding: 0/50 invented names.
+**Next up:** play the wow moment in the browser and fix UI issues → deploy (H17, hosted AI = AI Studio Gemma 4 with template fallback) → video/blog (H18).
 **Waiting on the user:**
-- An `LLM_API_KEY` (Google AI Studio) to turn on AI voices; templates are used until then. Then run `python scripts/grounding_check.py 50` for the real-model grounding number.
 - A public GitHub repo (H16 links), plus FalkorDB Cloud + Render accounts for H17.
 - README "AI assistance disclosure": add which parts you wrote or reviewed yourself. Check the LICENSE name ("Yash Gurav").
 **Decisions made:** see `DECISIONS.md` (the FalkorDB quirks found in H00 are listed there).
@@ -52,7 +52,7 @@ Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its che
 - [~] **H14 Sessions + shared state** — per-player graph copy ✔, catch-up ticks ✔, welcome-back summary ✔ (API), guard notice ✔ (Q-NOTICE-POST/READ), nightly impressions ✔ (Q-IMPRESSION). Remaining: banner in the UI, two-browser check. Deps: H11.
   Checks: reopen → village remembers; a second player gets a clean village.
 - [x] **H15 Measurements** — `test_no_invented_knowledge`, `scripts/load_test.py` (10/100 worlds), latency p50/p95 → `docs/results.md`. Deps: H11.
-  ✔ 500 worlds alive, read p95 2.3 ms; spread stats over 50 seeds; grounding 0/50 (templates). Found and fixed: concurrent `GRAPH.COPY` fails with "could not fork".
+  ✔ 500 worlds alive, read p95 2.3 ms; spread stats over 50 seeds; grounding 0/50 (templates) and 0/50 (real model, gemma3:4b). Found and fixed: concurrent `GRAPH.COPY` fails with "could not fork".
 - [x] **H16 README** — setup, graph model, query catalogue, architecture, measurements, tracks, AI disclosure, synthetic-data statement. Deps: all.
 - [~] **H17 Deploy** — local `docker compose up --build` ✔ verified. Cloud: FalkorDB Cloud + one container (the backend serves the frontend) on Render. **Needs user accounts.**
 - [ ] **H18 Video + blog + submit** — user-owned (§17–19).
