@@ -2,6 +2,8 @@
 
 **A memory engine that lets game characters remember what you did, gossip about it, and explain exactly who told whom, built on a [FalkorDB](https://www.falkordb.com/) graph.** It's playable here as a small 3D village. The same engine is a baseline for NPC memory in any open-world or story game.
 
+### ▶ Play it live: **https://hearsay-six.vercel.app** · Repo: https://github.com/Yashgurav002/hearsay
+
 **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 **Tracks:** Track 02 — **Agent Memory and Coordination** (primary) · Track 01 — **Agents That Act on Connected Data**
 
@@ -75,6 +77,9 @@ Then hunt 7 achievements. The 🔭 Spyglass shows the trust graph, PageRank, cli
 ![Why? traces the rumour back to the source](docs/screenshots/why.png)
 
 ## Run it
+
+### Live
+**https://hearsay-six.vercel.app**: the frontend is a static Vite build and the API is a Vercel Python function in Mumbai (`bom1`), next to a FalkorDB Cloud instance in ap-south-1. Villager replies use templates on the hosted site (AI Studio's Gemma 4 took 5–20 s and often failed, see DECISIONS.md); run it locally with Ollama for AI voices.
 
 ### Docker (one command)
 ```bash

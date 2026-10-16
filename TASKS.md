@@ -9,6 +9,7 @@ Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its che
 **AI:** the key is in `.env` (gitignored; moved out of `.env.example`). AI Studio Gemma 4 is slow and flaky (see DECISIONS), so local play uses Ollama `gemma3:4b`. Real-model grounding: 0/50 invented names.
 **3D (H20):** done. Third-person Three.js village with a 2D toggle; tested headless with zero errors.
 **Docs + video (H21):** done. `docs/HOW_TO_PLAY.md`, `docs/READING_THE_GRAPH.md`, `docs/ARCHITECTURE.md`; narrated walkthrough at `media/hearsay-walkthrough.mp4` (3:18, gitignored; upload it to YouTube/Loom).
+**Live (H17):** https://hearsay-six.vercel.app (Vercel + FalkorDB Cloud), repo https://github.com/Yashgurav002/hearsay.
 **Next up:** you play it and give feedback → deploy (H17; hosted AI = AI Studio Gemma 4 with template fallback) → video/blog (H18).
 **Waiting on the user:**
 - A public GitHub repo (H16 links), plus FalkorDB Cloud + Render accounts for H17.
@@ -56,7 +57,8 @@ Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its che
 - [x] **H15 Measurements** — `test_no_invented_knowledge`, `scripts/load_test.py` (10/100 worlds), latency p50/p95 → `docs/results.md`. Deps: H11.
   ✔ 500 worlds alive, read p95 2.3 ms; spread stats over 50 seeds; grounding 0/50 (templates) and 0/50 (real model, gemma3:4b). Found and fixed: concurrent `GRAPH.COPY` fails with "could not fork".
 - [x] **H16 README** — setup, graph model, query catalogue, architecture, measurements, tracks, AI disclosure, synthetic-data statement. Deps: all.
-- [~] **H17 Deploy** — local `docker compose up --build` ✔ verified. Cloud: FalkorDB Cloud + one container (the backend serves the frontend) on Render. **Needs user accounts.**
+- [x] **H17 Deploy** — **LIVE: https://hearsay-six.vercel.app**. Repo https://github.com/Yashgurav002/hearsay (public; Vercel auto-deploys from `main`). Vercel static frontend + Python function (bom1) + FalkorDB Cloud (ap-south-1). Hosted AI off (templates). Local `docker compose up --build` ✔ too.
+  Checks: live health db ok ✔; live 3D playtest (walk, steal, evening gossip) with no errors ✔; talk 13 ms ✔.
 - [ ] **H18 Video + blog + submit** — user-owned (§17–19).
 
 ## Wave 5 — Make it a game (user feedback 2026-10-17: "I didn't understand how to play")
