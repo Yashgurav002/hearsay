@@ -118,9 +118,7 @@ def why(w: World, vid: str, player: str) -> dict:
     fallback = ("I saw it with my own eyes." if len(chain) == 1 and chain[0]["hops"] == 0
                 else "; ".join(steps).replace(v["name"] + " heard", "I heard", 1) + ".")
     fallback = fallback[0].upper() + fallback[1:]
-    prompt = (f"You are {v['name']}, the {v['role']}. Personality: {v['persona']}. The traveller asks why you think "
-              f"what you think about them. Explain in 1-2 sentences, in character, exactly this chain and nothing else: "
-              f"{'; '.join(steps)}. What you believe: \"{chain[0]['said']}\".")
+    # no AI here: the explanation must state the traced chain exactly, and instantly
     return {"villager": vid, "what_happened": path["what_happened"], "at_tick": path["at_tick"],
             "chain": chain, "rumour_ids": path["rumour_ids"], "steps": steps,
-            "explanation": llm.chat(prompt, fallback, debug=w.debug)}
+            "explanation": fallback}

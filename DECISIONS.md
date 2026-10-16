@@ -30,4 +30,10 @@ One line each: what, why.
 - Measured on AI Studio (2026-10-16): 26B-A4B took 14–34 s per call and about half the calls failed (HTTP 500 or timeout); 31B took ~78 s. Too slow for live replies, so local play uses Ollama `gemma3:4b` (~1–4 s, grounded). `gemma3:1b` invented a "Sheriff", so it's out.
 - Retellings and nightly impressions are written with template text inside the tick; a background thread swaps in the AI wording afterwards (`gossip.polish_later`, Q-POLISH). Ticks stay fast and deterministic; only the wording changes.
 - `.env` is loaded by `backend/app/__init__.py` (stdlib, never overrides real env vars). Compose uses separate `DOCKER_LLM_*` variables so a local `localhost` Ollama URL doesn't leak into the container.
+- Game layer (2026-10-17): a canvas 2D village (no engine, no asset downloads: shapes + emoji) and a 7-step quest that teaches steal → spread → blocked → Why? → repair → escape. Quest progress lives in the browser (localStorage, per player); the world itself stays in the graph.
+- Coins: you start with 5 and apples cost 10, so stealing has a motive. Gifts cost 2; helping earns a 2-coin tip when someone sees it. Ilsa has a `refuse_gift` Rule (opinion below 0): a gift to a suspicious guard is a bribe and lowers her feeling, so the repair puzzle has to be solved through gossip.
+- "Why?" never calls the AI: the template states the traced chain exactly and instantly. Nightly impressions are template-only too: on a local model, six AI calls every midnight queued ahead of live replies (a "Why?" took 60+ s).
+- Background AI rewording runs on one worker queue (one call at a time), so a live reply waits behind at most one background call.
+- Chrome's `scrollIntoView()` now returns a Promise; an arrow-body `useEffect` returned it and React crashed treating it as a cleanup. Effects always use block bodies.
+- Skip buttons stop at 17:00 (evening), 22:00 (night) and 07:00 (morning): the guard only visits the inn 20–22, so skipping to 17:00 alone left new players stuck.
 - Backend serves the built frontend from `frontend/dist`, so deployment is one container + FalkorDB.

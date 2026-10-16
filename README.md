@@ -4,6 +4,18 @@
 
 > Steal an apple. Only Old Tomas sees it. That evening at the inn, Tomas and Pip tell Bertha, and Bertha tells Captain Ilsa: *"took an apple"* → *"stole a basket"* → *"robbed the market"*. Next morning the guard, who never saw a thing, blocks the gate. Ask her why: *"I heard it from Bertha; Bertha heard it from Old Tomas; Old Tomas saw it first-hand."* The path lights up in the graph, with the Cypher query that found it.
 
+![The rumour spreading at the inn](docs/screenshots/gossip.png)
+
+## How to play
+Walk around a tiny village (WASD, arrow keys, or click/tap). A 7-step quest teaches everything:
+1. Arrive hungry with 5 coins and walk to the market. 2. Steal an apple (Old Tomas sees it).
+3. Skip to the evening: watch the story spread at the inn in speech bubbles, getting worse each time.
+4. Try to leave: the guard, who never saw a thing, blocks the gate. 5. Ask her **"Why?"** to see the exact chain of who told whom.
+6. Clear your name by working the gossip network (gifts to a suspicious guard count as bribes). 7. Escape.
+Then hunt 7 achievements. The 🔭 Spyglass shows the trust graph, PageRank, cliques, rumour routes and every Cypher query as it runs.
+
+![Why? traces the rumour back to the source](docs/screenshots/why.png)
+
 **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 **Tracks:** Track 02 — **Agent Memory and Coordination** (primary) · Track 01 — **Agents That Act on Connected Data**
 

@@ -53,6 +53,7 @@
   "rules": [
     {"id": "guard_block", "villager": "ilsa", "role": "guard", "condition": "opinion_below", "action": "block_gate", "threshold": -0.3},
     {"id": "guard_notice", "villager": "ilsa", "role": "guard", "condition": "opinion_below", "action": "post_notice", "threshold": -0.6},
+    {"id": "guard_bribe", "villager": "ilsa", "role": "guard", "condition": "opinion_below", "action": "refuse_gift", "threshold": 0},
     {"id": "merchant_price", "villager": "tomas", "role": "merchant", "condition": "always", "action": "scale_price", "threshold": 0.5},
     {"id": "inn_refuse", "villager": "bertha", "role": "innkeeper", "condition": "opinion_below", "action": "refuse", "threshold": -0.5},
     {"id": "inn_gossip", "villager": "bertha", "role": "innkeeper", "condition": "opinion_above", "action": "share_gossip", "threshold": 0.3},

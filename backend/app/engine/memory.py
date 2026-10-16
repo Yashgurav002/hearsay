@@ -3,7 +3,6 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from .. import llm
 from ..db import World
 
 VILLAGE = json.loads((Path(__file__).resolve().parents[2] / "seed" / "village.json").read_text(encoding="utf-8"))
@@ -89,10 +88,6 @@ def consolidate(w: World, player: str, villager: dict, tick: int) -> str | None:
     sources = Counter(n for b in beliefs for n in b["told_by"])
     source = f"what {sources.most_common(1)[0][0]} told them" if sources else "what they saw themselves"
     fallback = f"{villager['name']} thinks you're {mood(op)}, mostly because of {source}."
-    facts = "; ".join(f"{b['story']} (confidence {b['confidence']:.2f}, told by {', '.join(b['told_by']) or 'saw it'})" for b in beliefs)
-    prompt = (f"In one sentence, summarise what {villager['name']} thinks of the traveller, based ONLY on: {facts}. "
-              f"Overall opinion score {op} (-1 hates, +1 loves). Mention the main source of the opinion. Address the traveller as 'you'.")
+    # ponytail: template wording only; six AI calls every midnight queued ahead of live replies on a local model
     w.q("impression", villager=villager["id"], player=player, text=fallback, tick=tick)
-    if llm.enabled():  # AI wording replaces the template in the background (gossip.polish_later)
-        w.later.append((None, prompt, "impression", {"villager": villager["id"], "player": player, "tick": tick}))
     return fallback

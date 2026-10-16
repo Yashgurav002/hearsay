@@ -1,242 +1,445 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, getPlayer, setPlayer, type Debug, type Hop, type State, type Why } from './api'
-import GossipGraph, { type GraphHandle } from './GossipGraph'
-import Inspector from './Inspector'
-import Spymaster from './Spymaster'
-import VillageMap from './VillageMap'
+import Dialogue, { type Msg } from './Dialogue'
+import GameCanvas, { type Bubble } from './GameCanvas'
+import { type GraphHandle } from './GossipGraph'
+import { QUESTS, TROPHIES, loadProgress, newProgress, saveProgress, type Flags, type Progress } from './quests'
+import Spyglass from './Spyglass'
+import WhyModal from './WhyModal'
+import { FACE, hourLabel, moodColor, moodFace, moodWord, shortName } from './world'
 
-type Msg = { from: 'you' | 'them'; text: string; action?: string }
-type Log = { tick: number; text: string; tone?: 'bad' | 'good' }
-type Edge = { source: string; target: string; weight: number }
-type Act = { result: any; state: State }
+type Feed = { tick: number; text: string; tone?: 'bad' | 'good' }
+type Toast = { id: number; text: string }
+type Act = { result: any; state: State; debug?: Debug }
+type Rumour = { id: string; holder: string; text: string; severity: number; heard_from: string[] }
 
-const hourLabel = (h: number) => `${String(h).padStart(2, '0')}:00`
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+let uid = 0
 
 export default function App() {
+  const [screen, setScreen] = useState<'intro' | 'game'>('intro')
   const [st, setSt] = useState<State | null>(null)
-  const [edges, setEdges] = useState<Edge[]>([])
-  const [selected, setSelected] = useState<string | null>(null)
+  const [prog, setProg] = useState<Progress>(newProgress())
+  const [bubbles, setBubbles] = useState<Bubble[]>([])
+  const [feed, setFeed] = useState<Feed[]>([])
+  const [toasts, setToasts] = useState<Toast[]>([])
+  const [zone, setZone] = useState<string | null>(null)
+  const [near, setNear] = useState<string | null>(null)
+  const [talkTo, setTalkTo] = useState<string | null>(null)
   const [chats, setChats] = useState<Record<string, Msg[]>>({})
-  const [input, setInput] = useState('')
   const [why, setWhy] = useState<Why | null>(null)
-  const [highlight, setHighlight] = useState<string[]>([])
-  const [log, setLog] = useState<Log[]>([])
-  const [debug, setDebug] = useState<Debug | null>(null)
-  const [away, setAway] = useState<{ hours: number; hops: Hop[] } | null>(null)
-  const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [tab, setTab] = useState<'graph' | 'spy' | 'hood'>('graph')
-  const [whisper, setWhisper] = useState('good_deed')
+  const [ff, setFf] = useState(false)
+  const [spy, setSpy] = useState(false)
+  const [help, setHelp] = useState(false)
+  const [trophies, setTrophies] = useState(false)
+  const [away, setAway] = useState<{ hours: number; hops: Hop[] } | null>(null)
+  const [win, setWin] = useState<{ rumours: Rumour[] } | null>(null)
+  const [plan, setPlan] = useState('')
+  const [debug, setDebug] = useState<Debug | null>(null)
+  const [spawn, setSpawn] = useState(0)
+  const [error, setError] = useState('')
   const graph = useRef<GraphHandle>(null)
+  const stopFf = useRef(false)
+  const stRef = useRef<State | null>(null)
+  stRef.current = st
 
-  const names = useMemo(() => Object.fromEntries((st?.villagers || []).map(v => [v.id, v.name])), [st])
-  const placeName = (id: string) => st?.places.find(p => p.id === id)?.name || id
-  const present = st ? st.villagers.filter(v => v.place === st.place).map(v => v.id) : []
-  const sel = st?.villagers.find(v => v.id === selected)
+  const name = (id: string) => stRef.current?.villagers.find(v => v.id === id)?.name || id
+  const toast = useCallback((text: string) => {
+    const id = ++uid
+    setToasts(t => [...t, { id, text }])
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4200)
+  }, [])
+  const say = (who: string, text: string, tone: Bubble['tone'] = 'say', delay = 0) =>
+    setBubbles(b => [...b.filter(x => performance.now() - x.born < 8000), { id: ++uid, who, text, tone, born: performance.now() + delay }])
+  const setFlag = (f: Partial<Flags>) => setProg(p => ({ ...p, flags: { ...p.flags, ...f } }))
 
-  const hopsToLog = (hops: Hop[], nm = names, pn = placeName): Log[] => hops.map(h => ({
-    tick: h.tick,
-    tone: h.sentiment < 0 ? 'bad' : 'good',
+  // ---------- session ----------
+  const start = async (fresh: boolean) => {
+    setError('')
+    if (fresh) setPlayer('')
+    try {
+      const s = await api<{ player_id: string; state: State; away: { hours: number; hops: Hop[] } | null }>(
+        '/api/session', { player_id: getPlayer() || null })
+      setPlayer(s.player_id)
+      setSt(s.state)
+      setProg(fresh ? newProgress(s.state.tick) : loadProgress(s.player_id, s.state.tick))
+      setSpawn(n => n + 1)
+      setFeed([]); setChats({}); setBubbles([]); setWin(null)
+      if (s.away?.hops.length) {
+        setAway(s.away)
+        setFeed(hopFeed(s.away.hops).reverse())
+      }
+      setScreen('game')
+      if (fresh) setHelp(false)
+    } catch (e) { setError((e as Error).message) }
+  }
+
+  useEffect(() => { if (st) saveProgress(getPlayer(), prog) }, [prog, st])
+
+  // ---------- quests + trophies ----------
+  useEffect(() => {
+    if (!st || screen !== 'game') return
+    let p = prog
+    while (p.quest < QUESTS.length && QUESTS[p.quest].done(st, p.flags)) {
+      toast(`✅ Quest complete: ${QUESTS[p.quest].title}`)
+      p = { ...p, quest: p.quest + 1 }
+    }
+    for (const t of TROPHIES) {
+      if (!p.trophies.includes(t.id) && t.check(st, p.flags)) {
+        toast(`${t.icon} Achievement: ${t.title}`)
+        p = { ...p, trophies: [...p.trophies, t.id] }
+      }
+    }
+    if (p.quest === QUESTS.length && !p.flags.winTick) {
+      p = { ...p, flags: { ...p.flags, winTick: st.tick } }
+      api<{ rumours: Rumour[] }>('/api/graph?view=rumour').then(r => setWin({ rumours: r.rumours }))
+    }
+    if (p !== prog) setProg(p)
+  }, [st, prog, screen, toast])
+
+  const quest = QUESTS[prog.quest]
+  useEffect(() => {
+    if (quest?.id !== 'fix') return
+    setPlan('')
+    api<{ plan: string }>('/api/spymaster/ask', { question: 'How do I fix my reputation with Captain Ilsa?' })
+      .then(r => setPlan(r.plan)).catch(() => {})
+  }, [quest?.id])
+
+  // ---------- gossip playback ----------
+  const hopFeed = (hops: Hop[]): Feed[] => hops.map(h => ({
+    tick: h.tick, tone: h.sentiment < 0 ? 'bad' : 'good',
     text: h.kind === 'hop'
-      ? `At ${pn(h.place)}, ${nm[h.teller]} told ${nm[h.listener]}: “${h.text}” (severity ${h.severity})`
-      : `${nm[h.teller]} confirmed it to ${nm[h.listener]}, now ${Math.round(h.confidence * 100)}% sure`,
+      ? `${shortName(name(h.teller))} → ${shortName(name(h.listener))}: “${h.text}”`
+      : `${shortName(name(h.teller))} confirmed it to ${shortName(name(h.listener))}`,
   }))
 
-  const run = async <T,>(fn: () => Promise<T & { debug?: Debug }>) => {
+  const playHops = (hops: Hop[]) => {
+    if (!hops.length) return 0
+    hops.forEach((h, i) => {
+      const tone = h.sentiment < 0 ? 'bad' : 'good'
+      say(h.teller, h.kind === 'hop' ? `${h.text}` : 'It\'s true, I heard it too!', tone, i * 900)
+      say(h.listener, h.kind === 'hop' ? (h.sentiment < 0 ? '😮' : '😊') : '🤔', 'say', i * 900 + 450)
+    })
+    setFeed(f => [...hopFeed(hops).reverse(), ...f].slice(0, 60))
+    const w = hops.filter(h => h.event.startsWith('whisper-') && h.kind === 'hop').length
+    if (w) setProg(p => ({ ...p, flags: { ...p.flags, whisperHops: p.flags.whisperHops + w } }))
+    graph.current?.play(hops)
+    return hops.length * 900
+  }
+
+  // ---------- actions ----------
+  const run = async <T,>(fn: () => Promise<T & { debug?: Debug }>): Promise<(T & { debug?: Debug }) | undefined> => {
     setBusy(true); setError('')
     try {
       const r = await fn()
       if (r.debug) setDebug(r.debug)
       return r
     } catch (e) {
-      setError((e as Error).message)
+      const msg = (e as Error).message
+      toast(`⚠️ ${msg.charAt(0).toUpperCase()}${msg.slice(1)}`)
     } finally { setBusy(false) }
   }
-
-  useEffect(() => {
-    run(async () => {
-      const s = await api<{ player_id: string; state: State; away: { hours: number; hops: Hop[] } | null }>(
-        '/api/session', { player_id: getPlayer() || null })
-      setPlayer(s.player_id)
-      const g = await api<{ edges: Edge[] }>('/api/graph')
-      setEdges(g.edges); setSt(s.state)
-      if (s.away) {
-        setAway(s.away)
-        const nm = Object.fromEntries(s.state.villagers.map(v => [v.id, v.name]))
-        const pn = (id: string) => s.state.places.find(p => p.id === id)?.name || id
-        setLog(hopsToLog(s.away.hops, nm, pn).reverse())
-        setTimeout(() => graph.current?.play(s.away!.hops), 1500)
-      }
-      return s
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const afterHops = (hops: Hop[]) => {
-    if (!hops.length) return
-    setLog(l => [...hopsToLog(hops).reverse(), ...l].slice(0, 80))
-    graph.current?.play(hops)
-  }
-
-  const say = (text: string, tone?: Log['tone']) => setLog(l => [{ tick: st?.tick || 0, text, tone }, ...l].slice(0, 80))
 
   const act = async (action: string, extra: Record<string, string> = {}) => {
     const r = await run(() => api<Act>('/api/act', { action, ...extra }))
     if (!r) return
     const res = r.result
-    const seen = res.witnesses?.length ? `Seen by: ${res.witnesses.join(', ')}.` : 'Nobody saw.'
-    const msg: Record<string, string> = {
-      go: `You walk to ${placeName(res.place)}.`,
-      steal: `You pocket an apple from Tomas's stall. ${seen}`,
-      help: `You lend a hand at ${placeName(res.place)}. ${seen}`,
-      gift: `You give ${names[extra.target]} a small gift.`,
-      whisper: `You whisper to ${names[extra.target]} that you ${extra.ladder === 'theft' ? 'took an apple' : 'fetched water for Father Anselm'}.`,
-      buy: `Old Tomas charges you ${res.price} coins for an apple (usually 10).`,
-      pass_gate: res.blocked ? 'Captain Ilsa blocks the gate! Ask her “Why?”' : 'The guard waves you through the gate.',
-      wait: 'You wait an hour.',
-    }
-    say(msg[action], action === 'steal' || res.blocked ? 'bad' : action === 'help' ? 'good' : undefined)
     setSt(r.state)
-    afterHops(res.hops)
+    if (action === 'steal') {
+      setFlag({ stole: true, ...(res.witnesses.length ? {} : { ghost: true }) })
+      say('you', '*crunch* 🍎')
+      if (res.witnesses.length) res.witnesses.forEach((w: string, i: number) => {
+        const id = r.state.villagers.find(v => v.name === w)?.id
+        if (id) say(id, i === 0 ? 'Oi! I saw that, thief!' : 'Did they just…?!', 'bad', 300 + i * 300)
+      })
+      toast(res.witnesses.length ? `👀 Seen by ${res.witnesses.join(', ')}` : '👻 Nobody saw a thing.')
+    } else if (action === 'help') {
+      say('you', 'Let me help with that!')
+      res.witnesses.forEach((w: string) => {
+        const id = r.state.villagers.find(v => v.name === w)?.id
+        if (id) say(id, 'Thank you, kind traveller!', 'good', 400)
+      })
+      toast(res.witnesses.length ? `🤝 ${res.witnesses.join(', ')} saw you help${res.coins != null ? ' (+2 🪙 tip)' : ''}` : '🤝 You helped… but nobody noticed.')
+    } else if (action === 'gift') {
+      if (res.refused) { say(extra.target, 'A bribe?! How dare you!', 'bad'); setFlag({ bribed: true }) }
+      else say(extra.target, 'Oh! For me? How kind!', 'good')
+    } else if (action === 'whisper') {
+      say('you', 'Psst… have you heard?')
+      say(extra.target, 'Ooh, really?', 'say', 500)
+    } else if (action === 'buy') {
+      toast(`🍎 Old Tomas charged you ${res.price} coins`)
+    } else if (action === 'pass_gate') {
+      if (res.blocked) {
+        setFlag({ blocked: true })
+        say('ilsa', 'Halt! You are not leaving this town.', 'bad')
+        toast('⛔ The gate is blocked!')
+      } else if (QUESTS[prog.quest]?.id === 'escape') {
+        setFlag({ passed: true })
+      } else {
+        say('ilsa', 'Move along, traveller.', 'good')
+        toast('🚪 The guard would let you through… but your story here isn\'t over. Follow the quest.')
+      }
+    }
+    playHops(res.hops)
   }
 
-  const wait = async (ticks: number) => {
-    const r = await run(() => api<{ hops: Hop[]; state: State }>('/api/wait', { ticks }))
-    if (!r) return
-    say(`You wait ${ticks} hour${ticks > 1 ? 's' : ''}.`)
-    setSt(r.state); afterHops(r.hops)
+  const waitHours = async (n: number) => {
+    setFf(n > 1); stopFf.current = false
+    for (let i = 0; i < n && !stopFf.current; i++) {
+      const r = await run(() => api<{ hops: Hop[]; state: State }>('/api/wait', { ticks: 1 }))
+      if (!r) break
+      setSt(r.state)
+      const ms = playHops(r.hops)
+      if (n > 1) await sleep(Math.max(500, ms))
+    }
+    setFf(false)
   }
 
-  const talk = async () => {
-    if (!selected || !input.trim()) return
-    const text = input.trim()
-    setInput('')
-    setChats(c => ({ ...c, [selected]: [...(c[selected] || []), { from: 'you', text }] }))
-    const r = await run(() => api<{ reply: string; action: string }>('/api/talk', { villager: selected, text }))
+  const talk = async (text: string) => {
+    if (!talkTo) return
+    const id = talkTo
+    setChats(c => ({ ...c, [id]: [...(c[id] || []), { from: 'you', text }] }))
+    const r = await run(() => api<{ reply: string; action: string }>('/api/talk', { villager: id, text }))
     if (!r) return
-    setChats(c => ({ ...c, [selected]: [...(c[selected] || []), { from: 'them', text: r.reply, action: r.action }] }))
+    setChats(c => ({ ...c, [id]: [...(c[id] || []), { from: 'them', text: r.reply, action: r.action }] }))
+    say(id, r.reply, 'say')
     const s = await api<{ state: State }>('/api/state')
     setSt(s.state)
   }
 
-  const askWhy = async () => {
-    if (!selected) return
-    const r = await run(() => api<Why>(`/api/why?villager=${selected}`))
+  const askWhy = async (id: string) => {
+    const r = await run(() => api<Why>(`/api/why?villager=${id}`))
     if (!r) return
     setWhy(r)
-    setHighlight(r.chain.map(c => c.id).filter(id => id in names))
-    setTab('graph')
+    if (id === 'ilsa' && r.chain.length) setFlag({ whyIlsa: true })
   }
 
-  const reset = async () => {
-    if (!window.confirm('Start a fresh village? Everyone will forget you.')) return
-    const r = await run(() => api<{ state: State }>('/api/reset', {}))
-    if (!r) return
-    setSt(r.state); setLog([]); setChats({}); setWhy(null); setHighlight([]); setAway(null)
-  }
+  // walking into a place = going there (1 hour)
+  useEffect(() => {
+    if (!st || busy || !zone || zone === st.place) return
+    act('go', { place: zone })
+  }, [zone, st?.place, busy]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!st) return <div className="loading">{error ? `Can't reach the village: ${error}` : 'Walking into the village…'}</div>
+  // ---------- keyboard: number keys for the action bar, space to wait ----------
+  const inPlace = !!st && zone === st.place
+  const present = st ? st.villagers.filter(v => v.place === st.place).map(v => v.id) : []
+  const [skipTarget, skipName] = !st ? [7, 'morning'] : st.hour >= 7 && st.hour < 17 ? [17, 'evening'] : st.hour >= 17 && st.hour < 22 ? [22, 'night'] : [7, 'morning']
+  const skipHours = st ? (skipTarget - st.hour + 24) % 24 || 24 : 0
+  const actions: { label: string; run: () => void; hint?: string }[] = st ? [
+    ...(inPlace && st.place === 'market' ? [{ label: '🍎 Steal an apple', run: () => act('steal') }, { label: '🪙 Buy an apple', run: () => act('buy') }] : []),
+    ...(inPlace ? [{ label: '🤝 Help out', run: () => act('help'), hint: 'A good deed. Whoever is here sees it.' }] : []),
+    ...(inPlace && st.place === 'gate' ? [{ label: '🚪 Leave town', run: () => act('pass_gate') }] : []),
+    ...(near ? [{ label: `💬 Talk to ${shortName(name(near))}`, run: () => setTalkTo(near) }] : []),
+    { label: '⏳ Wait an hour', run: () => waitHours(1) },
+    { label: `⏩ Skip to ${skipName} (${hourLabel(skipTarget)})`, run: () => waitHours(skipHours) },
+  ] : []
 
-  const here = st.place
+  const modal = !!(talkTo || why || spy || help || trophies || away || win)
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (modal || busy || screen !== 'game') return
+      if (e.target instanceof HTMLElement && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return
+      if (e.key === ' ') { e.preventDefault(); waitHours(1) }
+      const n = Number(e.key)
+      if (n >= 1 && n <= actions.length) actions[n - 1].run()
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  })
+
+  // ---------- screens ----------
+  if (screen === 'intro') return <Intro canContinue={!!getPlayer()} onStart={start} error={error} />
+  if (!st) return null
+
+  const talkV = st.villagers.find(v => v.id === talkTo)
+  const night = st.hour >= 23 || st.hour < 6
+
   return (
-    <div className="app">
-      <header>
-        <h1>Hearsay <span>Everyone's talking about you.</span></h1>
-        <div className="clock" aria-live="polite">Day {st.day} · {hourLabel(st.hour)}</div>
-        <button className="ghost" onClick={reset}>New village</button>
+    <div className="game">
+      <header className="topbar">
+        <h1>Hearsay</h1>
+        <div className="pill clock" aria-live="polite">{night ? '🌙' : st.hour >= 17 ? '🌇' : '☀️'} Day {st.day} · {hourLabel(st.hour)}</div>
+        <div className="pill" title="Your coins">🪙 {st.coins ?? 0}</div>
+        <span className="spacer" />
+        <button className="ghost" onClick={() => setHelp(true)}>❓ How to play</button>
+        <button className="ghost" onClick={() => setTrophies(true)}>🏆 {prog.trophies.length}/{TROPHIES.length}</button>
+        <button className="ghost" onClick={() => setSpy(true)}>🔭 Spyglass</button>
+        <button className="ghost" onClick={() => { if (window.confirm('Start a new game? This village will forget you.')) start(true) }}>↺ New game</button>
       </header>
 
-      {away && (
-        <div className="banner" role="status">
-          <b>{away.hours} hours have passed. People have been talking…</b>
-          {away.hops.length ? ` ${away.hops.length} conversation${away.hops.length > 1 ? 's' : ''} about you while you were away.` : ' Nothing new, it seems.'}
-          <button className="ghost" onClick={() => setAway(null)} aria-label="Dismiss">✕</button>
-        </div>
-      )}
-      {st.notices.length > 0 && <div className="notice">📜 {st.notices[0].text}</div>}
-      {error && <div className="error" role="alert">{error}</div>}
-
-      <main>
-        <div className="left">
-          <VillageMap state={st} selected={selected} highlight={new Set(highlight)}
-                      onPlace={id => id !== here && !busy && act('go', { place: id })}
-                      onVillager={id => { setSelected(id); setWhy(null) }} />
-          <p className="hint">Click a place to walk there (1 hour). Click a villager to talk. Ring colour = what they think of you.</p>
-          <div className="actions">
-            <button disabled={busy || here !== 'market'} onClick={() => act('steal')} title="Only at the market">🍎 Steal</button>
-            <button disabled={busy || here !== 'market' || !present.includes('tomas')} onClick={() => act('buy')}>🪙 Buy</button>
-            <button disabled={busy} onClick={() => act('help')}>🤝 Help</button>
-            <button disabled={busy || !selected || !present.includes(selected)} onClick={() => act('gift', { target: selected! })}>🎁 Gift{sel ? ` ${sel.name.split(' ').pop()}` : ''}</button>
-            <span className="whisper">
-              <select value={whisper} onChange={e => setWhisper(e.target.value)} aria-label="Whisper story">
-                <option value="good_deed">good deed</option>
-                <option value="theft">theft</option>
-              </select>
-              <button disabled={busy || !selected || !present.includes(selected)} onClick={() => act('whisper', { target: selected!, ladder: whisper })}>🤫 Whisper</button>
-            </span>
-            <button disabled={busy || here !== 'gate'} onClick={() => act('pass_gate')}>🚪 Pass gate</button>
-            <button disabled={busy} onClick={() => wait(1)}>⏳ Wait an hour</button>
-            <button disabled={busy} onClick={() => wait(3)}>⏳ 3 hours</button>
-          </div>
-          <section className="panel log">
-            <h2>What's being said</h2>
-            {log.length === 0 && <p className="hint">Nothing yet. Do something people will talk about.</p>}
-            <ul>{log.map((l, i) => <li key={i} className={l.tone}><code>{hourLabel(l.tick % 24)}</code> {l.text}</li>)}</ul>
-          </section>
-        </div>
-
-        <div className="right">
-          <section className="panel dialogue">
-            {!sel ? <p className="hint">Pick a villager on the map to talk to them.</p> : (
-              <>
-                <h2>{sel.name} <small>{sel.role} · opinion {sel.opinion >= 0 ? '+' : ''}{sel.opinion.toFixed(2)}</small></h2>
-                <div className="chat">
-                  {(chats[sel.id] || []).map((m, i) => (
-                    <p key={i} className={m.from}>{m.text}{m.action && m.action !== 'talk' && <em> [{m.action.replace('_', ' ')}]</em>}</p>
-                  ))}
-                </div>
-                {present.includes(sel.id) ? (
-                  <form className="row" onSubmit={e => { e.preventDefault(); talk() }}>
-                    <input value={input} onChange={e => setInput(e.target.value)} maxLength={300} placeholder={`Say something to ${sel.name}…`} aria-label="Message" />
-                    <button disabled={busy}>Say</button>
-                  </form>
-                ) : <p className="hint">{sel.name} is {sel.place ? `at ${placeName(sel.place)}` : 'at home'}. Go there to talk.</p>}
-                <button className="why" onClick={askWhy} disabled={busy}>Why? 🔍</button>
-                {why && (
-                  <div className="why-box">
-                    <p className="voice">“{why.explanation}”</p>
-                    {why.chain.length > 0 && (
-                      <ol className="chain">
-                        {why.chain.map(c => (
-                          <li key={c.id}><b>{c.id in names ? names[c.id] : 'You'}</b> <span className={`sev s${c.severity}`}>sev {c.severity}</span> “{c.said}”
-                            {c.notice_by && <em> (from {c.notice_by}'s notice)</em>}</li>
-                        ))}
-                        <li className="origin">What actually happened at {hourLabel((why.at_tick ?? 0) % 24)}: {why.what_happened}</li>
-                      </ol>
-                    )}
-                    {why.cypher && <details><summary>The Cypher that found this</summary><pre className="cypher">{why.cypher.join('\n\n')}</pre></details>}
-                  </div>
-                )}
-              </>
+      <div className="layout">
+        <aside className="side left">
+          {quest ? (
+            <section className="card quest">
+              <p className="kicker">Quest {prog.quest + 1} of {QUESTS.length}</p>
+              <h2>{quest.title}</h2>
+              <p>{quest.body(st, prog.flags)}</p>
+              {quest.hint && <p className="hint">💡 {quest.hint}</p>}
+              {quest.id === 'fix' && plan && <p className="plan">🕵️ Spymaster: {plan}</p>}
+            </section>
+          ) : (
+            <section className="card quest">
+              <p className="kicker">Free play</p>
+              <h2>You escaped! 🎉</h2>
+              <p>Keep playing: hunt the achievements (🏆), or start a new game.</p>
+            </section>
+          )}
+          <section className="card feed">
+            <h3>📣 Rumour mill</h3>
+            {feed.length === 0 ? <p className="hint">Nobody is talking about you… yet.</p> : (
+              <ul>{feed.slice(0, 8).map((f, i) => <li key={i} className={f.tone}><code>{hourLabel(f.tick % 24)}</code> {f.text}</li>)}</ul>
             )}
           </section>
+        </aside>
 
-          <nav className="tabs" role="tablist">
-            {(['graph', 'spy', 'hood'] as const).map(t => (
-              <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
-                {{ graph: 'Gossip graph', spy: 'Spymaster', hood: 'Under the hood' }[t]}
+        <main className="center">
+          <GameCanvas st={st} bubbles={bubbles} frozen={modal || busy && ff} spawn={spawn}
+                      onZone={setZone} onNear={setNear} onTalk={id => setTalkTo(id)} />
+          <div className="actionbar">
+            {!inPlace && <span className="hint">{zone === null ? 'Walk into a place to do things there.' : 'Arriving…'}</span>}
+            {actions.map((a, i) => (
+              <button key={a.label} onClick={a.run} disabled={busy} title={a.hint}>
+                <kbd>{i + 1}</kbd> {a.label}
               </button>
             ))}
-          </nav>
-          <div hidden={tab !== 'graph'} className="panel">
-            <p className="hint">Arrows show which way gossip flows (towards whoever trusts the teller). Red = bad news, green = good.</p>
-            <GossipGraph ref={graph} villagers={st.villagers} edges={edges} highlight={highlight} />
-            {highlight.length > 0 && <button className="ghost" onClick={() => setHighlight([])}>Clear highlight</button>}
+            {ff && <button className="ghost" onClick={() => { stopFf.current = true }}>⏹ Stop</button>}
           </div>
-          {tab === 'spy' && <Spymaster villagers={st.villagers} onDebug={d => d && setDebug(d)} onRoute={ids => setHighlight([...ids].reverse())} />}
-          {tab === 'hood' && <Inspector debug={debug} villager={selected} tick={st.tick} />}
+          {ff && <div className="ff">⏩ Time flies… {hourLabel(st.hour)}</div>}
+        </main>
+
+        <aside className="side right">
+          <section className="card opinions">
+            <h3>What they think of you</h3>
+            {st.villagers.map(v => (
+              <button key={v.id} className="person" onClick={() => setTalkTo(v.id)} title={`Talk to ${v.name}, or ask why`}>
+                <span className="face" style={{ borderColor: moodColor(v.opinion) }}>{FACE[v.id]}</span>
+                <span className="who"><b>{shortName(v.name)}</b><small>{v.role} · {v.place ? (v.place === st.place ? 'here' : st.places.find(p => p.id === v.place)?.name) : 'asleep'}</small></span>
+                <span className="mood" title={moodWord(v.opinion)}>{moodFace(v.opinion)}</span>
+                <span className="meter"><span style={{ left: `${(v.opinion + 1) * 50}%`, background: moodColor(v.opinion) }} /></span>
+              </button>
+            ))}
+            <p className="hint">Click anyone to ask them <b>“Why?”</b></p>
+          </section>
+          {st.notices.length > 0 && <section className="card notice">📜 {st.notices[0].text}</section>}
+        </aside>
+      </div>
+
+      <div className="toasts" aria-live="polite">{toasts.map(t => <div key={t.id} className="toast">{t.text}</div>)}</div>
+
+      {talkV && <Dialogue v={talkV} msgs={chats[talkV.id] || []} busy={busy} coins={st.coins ?? 0}
+                          here={present.includes(talkV.id) && inPlace}
+                          onSay={talk} onWhy={() => askWhy(talkV.id)} onClose={() => setTalkTo(null)}
+                          onGift={() => act('gift', { target: talkV.id })}
+                          onWhisper={ladder => act('whisper', { target: talkV.id, ladder })} />}
+      {why && <WhyModal why={why} name={name(why.villager)} onClose={() => setWhy(null)} />}
+      {spy && <Spyglass st={st} debug={debug} graphRef={graph} onDebug={d => d && setDebug(d)} onClose={() => setSpy(false)} />}
+      {help && <HowTo onClose={() => setHelp(false)} />}
+      {trophies && <Trophies got={prog.trophies} onClose={() => setTrophies(false)} />}
+      {away && (
+        <div className="modal-bg" onClick={() => setAway(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h2>🌙 {away.hours} hours have passed…</h2>
+            <p>While you were away, people talked. <b>{away.hops.length}</b> conversation{away.hops.length === 1 ? '' : 's'} about you:</p>
+            <ul className="away">{hopFeed(away.hops).map((f, i) => <li key={i} className={f.tone}>{f.text}</li>)}</ul>
+            <button onClick={() => setAway(null)}>Back to the village</button>
+          </div>
         </div>
-      </main>
-      <footer>Hearsay · every memory, rumour and trust edge lives in a FalkorDB graph</footer>
+      )}
+      {win && <Win st={st} prog={prog} rumours={win.rumours} onClose={() => setWin(null)} onNew={() => start(true)} />}
+    </div>
+  )
+}
+
+function Intro({ canContinue, onStart, error }: { canContinue: boolean; onStart: (fresh: boolean) => void; error: string }) {
+  return (
+    <div className="intro">
+      <div className="intro-card">
+        <p className="kicker">A tiny village that never forgets</p>
+        <h1>Hearsay</h1>
+        <p className="tag">Everyone's talking about you.</p>
+        <div className="how3">
+          <div><span>👀</span><b>They remember</b><p>Villagers remember what they see you do.</p></div>
+          <div><span>🗣️</span><b>They gossip</b><p>Stories spread from friend to friend, and get worse with every retelling.</p></div>
+          <div><span>🔍</span><b>Ask “Why?”</b><p>Anyone can show you exactly who told them what.</p></div>
+        </div>
+        <p className="controls">Move: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows / click · Talk: <kbd>E</kbd> · Wait: <kbd>Space</kbd> · Actions: <kbd>1</kbd>–<kbd>6</kbd></p>
+        <div className="row center">
+          <button className="big" onClick={() => onStart(true)}>▶ New game</button>
+          {canContinue && <button className="big ghost" onClick={() => onStart(false)}>Continue</button>}
+        </div>
+        {error && <p className="error">Can't reach the village: {error}</p>}
+        <p className="fine">Every memory, rumour and friendship lives in a FalkorDB graph. Peek with the 🔭 Spyglass.</p>
+      </div>
+    </div>
+  )
+}
+
+function HowTo({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h2>❓ How to play</h2>
+        <ul className="howto">
+          <li><b>Follow the quest</b> (top left). It walks you through everything.</li>
+          <li><b>Walk</b> with WASD / arrow keys, or click where you want to go. Entering a place takes an hour.</li>
+          <li><b>Do things</b> with the buttons under the map (or number keys). Whoever is in the same place <i>witnesses</i> it.</li>
+          <li><b>Time</b> moves one hour per action. Wait with <kbd>Space</kbd>, or skip to the evening, when everyone meets at the inn and gossips.</li>
+          <li><b>Gossip</b> travels only between people who trust each other, and gets exaggerated. Watch the speech bubbles and the 📣 Rumour mill.</li>
+          <li><b>Faces</b> on the right show what each villager thinks of you, from 😡 to 🤩. Their opinions decide prices, rooms and the town gate.</li>
+          <li><b>Talk</b> to anyone nearby with <kbd>E</kbd>, and ask <b>“Why?”</b> to see exactly who told them.</li>
+          <li><b>🔭 Spyglass</b> shows the trust network and graph algorithms, like who the most influential gossip is, and the fastest route for a rumour.</li>
+        </ul>
+        <button onClick={onClose}>Let's go</button>
+      </div>
+    </div>
+  )
+}
+
+function Trophies({ got, onClose }: { got: string[]; onClose: () => void }) {
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h2>🏆 Achievements</h2>
+        <ul className="trophies">
+          {TROPHIES.map(t => (
+            <li key={t.id} className={got.includes(t.id) ? 'got' : ''}>
+              <span>{got.includes(t.id) ? t.icon : '🔒'}</span><b>{t.title}</b><small>{t.text}</small>
+            </li>
+          ))}
+        </ul>
+        <button onClick={onClose}>Close</button>
+      </div>
+    </div>
+  )
+}
+
+function Win({ st, prog, rumours, onClose, onNew }: { st: State; prog: Progress; rumours: Rumour[]; onClose: () => void; onNew: () => void }) {
+  const hours = (prog.flags.winTick ?? st.tick) - prog.flags.startTick
+  const worst = [...rumours].filter(r => !r.id.startsWith('good_deed') && !r.id.startsWith('whisper')).sort((a, b) => b.severity - a.severity)[0]
+  const holderOf = Object.fromEntries(rumours.map(r => [r.id, r.holder]))
+  const tellers: Record<string, number> = {}
+  for (const r of rumours) for (const s of r.heard_from) { const t = holderOf[s]; if (t && t in FACE) tellers[t] = (tellers[t] || 0) + 1 }
+  const top = Object.entries(tellers).sort((a, b) => b[1] - a[1])[0]
+  const vname = (id: string) => st.villagers.find(v => v.id === id)?.name || id
+  return (
+    <div className="modal-bg">
+      <div className="modal win">
+        <h2>🏆 You escaped Brindlewick!</h2>
+        <p>One stolen apple, {hours} hours, and a whole village talking.</p>
+        <div className="stats">
+          <div><b>{hours}h</b><small>to escape</small></div>
+          <div><b>{rumours.length}</b><small>versions of stories about you</small></div>
+          <div><b>{prog.trophies.length}/{TROPHIES.length}</b><small>achievements</small></div>
+        </div>
+        {worst && <p>Worst thing they said: <b>“{worst.text}”</b> ({vname(worst.holder)})</p>}
+        {top && <p>Biggest gossip: <b>{FACE[top[0]]} {vname(top[0])}</b>, who passed on {top[1]} stor{top[1] === 1 ? 'y' : 'ies'}.</p>}
+        <p className="hint">Everything you saw was stored and traced in a FalkorDB graph. Open the 🔭 Spyglass to see how.</p>
+        <div className="row center">
+          <button onClick={onClose}>Keep playing</button>
+          <button className="ghost" onClick={onNew}>New game</button>
+        </div>
+      </div>
     </div>
   )
 }

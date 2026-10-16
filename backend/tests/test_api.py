@@ -14,7 +14,8 @@ def test_fallback_full_flow():
     assert c.post("/api/act", json={"action": "go", "place": "market"}, headers=h).status_code == 200
     r = c.post("/api/act", json={"action": "steal"}, headers=h).json()
     assert r["result"]["witnesses"] == ["Old Tomas"]
-    assert c.post("/api/act", json={"action": "buy"}, headers=h).json()["result"]["price"] > 10
+    broke = c.post("/api/act", json={"action": "buy"}, headers=h)
+    assert broke.status_code == 400 and "coins" in broke.json()["error"]  # 5 coins, and the thief pays extra
     talk = c.post("/api/talk", json={"villager": "tomas", "text": "Hello there"}, headers=h).json()
     assert talk["action"] == "raise_price" and talk["reply"]
     c.post("/api/wait", json={"ticks": 9}, headers=h)

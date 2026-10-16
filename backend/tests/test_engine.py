@@ -102,3 +102,12 @@ def test_notice_handoff(demo):
     gossip.advance(w, 1)  # Pip reaches the gate at 12 and reads the notice
     assert w.q("notices", villager="pip")
     assert w.one("notices", villager="ilsa")["kind"] == "wanted"
+
+
+def test_bribe(demo):
+    w, p = demo  # Ilsa already distrusts the traveller
+    w.q("move_place", positions=[{"villager": "ilsa", "place": "well"}, {"villager": "pip", "place": "well"}])
+    w.q("player_move", player=p, place="well")
+    feel = w.one("opinion", villager="ilsa", player=p)["feel"]
+    r = game.act(w, p, "gift", target="ilsa")
+    assert r["refused"] is True and r["affinity"] < feel and r["coins"] == 3

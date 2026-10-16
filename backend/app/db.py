@@ -10,6 +10,7 @@ from falkordb import FalkorDB
 QUERY_DIR = Path(__file__).resolve().parent.parent / "queries"
 QUERIES = {p.stem: p.read_text(encoding="utf-8") for p in QUERY_DIR.glob("*.cypher")}
 TEMPLATE = "hearsay_template"
+START_COINS = 5
 PLAYER_ID = re.compile(r"^[a-z0-9]{6,32}$")
 
 _client = FalkorDB(
@@ -82,7 +83,7 @@ class World:
                         raise
                     time.sleep(0.1 * (attempt + 1))
         w = cls.for_player(player)
-        w.q("join", player=player, tick=w.one("world")["tick"])
+        w.q("join", player=player, tick=w.one("world")["tick"], coins=START_COINS)
         return w
 
     def delete(self) -> None:

@@ -7,6 +7,8 @@ from .engine.memory import VILLAGE
 PLACES = {p["id"]: p["name"] for p in VILLAGE["places"]}
 NAMES = {v["id"]: v["name"] for v in VILLAGE["villagers"]}
 BASE_PRICE = 10
+GIFT_COST = 2
+HELP_TIP = 2
 
 
 class GameError(ValueError):
@@ -45,11 +47,19 @@ def act(w: World, player: str, action: str, place: str | None = None, target: st
         if action == "steal" and at != "market":
             raise GameError("there is nothing to steal here; go to the market")
         out["witnesses"] = memory.witness(w, player, at, "theft" if action == "steal" else "good_deed", tick)
+        if action == "help" and out["witnesses"]:  # someone you helped tips you
+            out["coins"] = w.one("coins", player=player, delta=HELP_TIP)["coins"]
     elif action in ("gift", "whisper"):
         if target not in present:
             raise GameError("they aren't here")
         if action == "gift":
-            out["affinity"] = memory.feel(w, target, player, 0.3)
+            if w.one("world")["coins"] < GIFT_COST:
+                raise GameError(f"a gift costs {GIFT_COST} coins")
+            out["coins"] = w.one("coins", player=player, delta=-GIFT_COST)["coins"]
+            rules = memory.actions_of(w, target)
+            # a guard who already distrusts you reads a gift as a bribe
+            out["refused"] = "refuse_gift" in memory.triggered(rules, memory.opinion(w, target, player, rules))
+            out["affinity"] = memory.feel(w, target, player, -0.15 if out["refused"] else 0.3)
         else:
             if ladder not in memory.LADDERS:
                 raise GameError("whisper needs ladder: theft or good_deed")
@@ -58,6 +68,9 @@ def act(w: World, player: str, action: str, place: str | None = None, target: st
         if "tomas" not in present:
             raise GameError("Old Tomas isn't at his stall")
         out["price"] = price(w, player)
+        if w.one("world")["coins"] < out["price"]:
+            raise GameError(f"Old Tomas wants {out['price']} coins; you don't have enough")
+        out["coins"] = w.one("coins", player=player, delta=-out["price"])["coins"]
     elif action == "pass_gate":
         if at != "gate":
             raise GameError("go to the gate first")

@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
-import { initials, moodColor } from './VillageMap'
+import { initials, moodColor } from './world'
 import type { Hop, Villager } from './api'
 
 type Edge = { source: string; target: string; weight: number }

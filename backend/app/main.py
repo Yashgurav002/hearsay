@@ -51,6 +51,7 @@ def state(w: World, player: str) -> dict:
     for v in villagers:
         v["opinion"] = memory.opinion(w, v["id"], player)
     return {"tick": st["tick"], "hour": st["tick"] % 24, "day": st["tick"] // 24 + 1, "place": st["place"],
+            "coins": st["coins"],
             "villagers": villagers, "places": [{"id": k, "name": n} for k, n in game.PLACES.items()],
             "notices": w.q("notices", villager="ilsa")}
 

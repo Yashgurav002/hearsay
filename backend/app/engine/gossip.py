@@ -1,6 +1,7 @@
 """The tick loop (PRD section 7): move -> pairs -> candidates -> hop/corroborate -> rules -> nightly decay.
 Randomness comes from Random(f"{seed}:{tick}"), so the same seed and actions give the same spread."""
 import json
+import queue
 import random
 import threading
 
@@ -30,17 +31,31 @@ def retell(teller: dict, ladder: str, severity: int) -> tuple[tuple, str, str]:
     return (ladder, severity, teller["id"]), prompt, fallback
 
 
-def polish_later(name: str, jobs: list[tuple]) -> None:
-    """The model takes seconds per call, so ticks use template wording and a background thread
-    swaps in the AI phrasing afterwards. Only text changes, so the spread stays deterministic."""
-    def work():
-        for key, prompt, query, params in jobs:
-            text = llm.cached(key, prompt, None) if key else llm.chat(prompt, None, max_tokens=60)
+_jobs: queue.Queue = queue.Queue()
+
+
+def _polish_worker():
+    while True:
+        name, (key, prompt, query, params) = _jobs.get()
+        try:
+            text = llm.cached(key, prompt, None)
             if text:
                 w = World(name)
                 with w.lock():
                     w.q(query, **params, text=text)
-    threading.Thread(target=work, daemon=True).start()
+        except Exception:  # a deleted world or a model hiccup must not kill the worker
+            pass
+
+
+def polish_later(name: str, jobs: list[tuple]) -> None:
+    """The model takes seconds per call, so ticks use template wording and one background worker
+    swaps in the AI phrasing afterwards (one call at a time, so live replies wait behind at most one).
+    Only text changes, so the spread stays deterministic."""
+    for job in jobs:
+        _jobs.put((name, job))
+
+
+threading.Thread(target=_polish_worker, daemon=True).start()
 
 
 def tick_once(w: World) -> list[dict]:

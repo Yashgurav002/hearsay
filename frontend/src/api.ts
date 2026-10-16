@@ -2,7 +2,7 @@ export type Villager = { id: string; name: string; role: string; place: string |
 export type Place = { id: string; name: string }
 export type Notice = { id: string; kind: string; text: string; tick: number }
 export type State = {
-  tick: number; hour: number; day: number; place: string
+  tick: number; hour: number; day: number; place: string; coins: number
   villagers: Villager[]; places: Place[]; notices: Notice[]
 }
 export type Hop = {

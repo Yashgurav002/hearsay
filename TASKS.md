@@ -2,12 +2,12 @@
 
 Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its checks pass**. Status: `[ ]` todo · `[~]` in progress · `[x]` done.
 
-## Where we are (updated 2026-10-17, early morning)
+## Where we are (updated 2026-10-17)
 
 **Done:** H00–H12, H15, H16. Backend, frontend build, measurements and README are done. 14 tests pass (`python -m pytest backend/tests`). `docker compose up --build` verified from the repo: it seeds, serves the UI on :8000 and the API answers.
-**In progress:** H13/H14: the UI builds and the API flow is verified over HTTP, but it hasn't been played in a browser yet (the Chrome extension wasn't connected).
+**Game (H19):** done. Canvas 2D village, 7-step quest, Why? comic strip, achievements, win screen; the full story was played end to end in headless Chrome (Playwright, script in the session scratchpad) with zero console errors. Screenshots in `docs/screenshots/`.
 **AI:** the key is in `.env` (gitignored; moved out of `.env.example`). AI Studio Gemma 4 is slow and flaky (see DECISIONS), so local play uses Ollama `gemma3:4b`. Real-model grounding: 0/50 invented names.
-**Next up:** play the wow moment in the browser and fix UI issues → deploy (H17, hosted AI = AI Studio Gemma 4 with template fallback) → video/blog (H18).
+**Next up:** you play it and give feedback → deploy (H17; hosted AI = AI Studio Gemma 4 with template fallback) → video/blog (H18).
 **Waiting on the user:**
 - A public GitHub repo (H16 links), plus FalkorDB Cloud + Render accounts for H17.
 - README "AI assistance disclosure": add which parts you wrote or reviewed yourself. Check the LICENSE name ("Yash Gurav").
@@ -44,15 +44,20 @@ Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its che
 
 ## Wave 3 — Frontend
 
-- [~] **H13 Frontend** (built; browser playtest pending) — Vite + React + TS: village map, action bar, dialogue + Why?, gossip graph (react-force-graph-2d) animating hops, spymaster panel, under-the-hood drawer, welcome-back banner. Deps: H11, H12.
+- [x] **H13 Frontend** (superseded by H19) — Vite + React + TS: village map, action bar, dialogue + Why?, gossip graph (react-force-graph-2d) animating hops, spymaster panel, under-the-hood drawer, welcome-back banner. Deps: H11, H12.
   Checks: full wow moment playable in the browser.
 
 ## Wave 4 — Persistence, proof, ship
 
-- [~] **H14 Sessions + shared state** — per-player graph copy ✔, catch-up ticks ✔, welcome-back summary ✔ (API), guard notice ✔ (Q-NOTICE-POST/READ), nightly impressions ✔ (Q-IMPRESSION). Remaining: banner in the UI, two-browser check. Deps: H11.
+- [x] **H14 Sessions + shared state** — per-player graph copy ✔, catch-up ticks ✔, welcome-back summary ✔ (API), guard notice ✔ (Q-NOTICE-POST/READ), nightly impressions ✔ (Q-IMPRESSION). Remaining: banner in the UI, two-browser check. Deps: H11.
   Checks: reopen → village remembers; a second player gets a clean village.
 - [x] **H15 Measurements** — `test_no_invented_knowledge`, `scripts/load_test.py` (10/100 worlds), latency p50/p95 → `docs/results.md`. Deps: H11.
   ✔ 500 worlds alive, read p95 2.3 ms; spread stats over 50 seeds; grounding 0/50 (templates) and 0/50 (real model, gemma3:4b). Found and fixed: concurrent `GRAPH.COPY` fails with "could not fork".
 - [x] **H16 README** — setup, graph model, query catalogue, architecture, measurements, tracks, AI disclosure, synthetic-data statement. Deps: all.
 - [~] **H17 Deploy** — local `docker compose up --build` ✔ verified. Cloud: FalkorDB Cloud + one container (the backend serves the frontend) on Render. **Needs user accounts.**
 - [ ] **H18 Video + blog + submit** — user-owned (§17–19).
+
+## Wave 5 — Make it a game (user feedback 2026-10-17: "I didn't understand how to play")
+
+- [x] **H19 Gamify** — intro screen, walkable canvas village (WASD/arrows/click), villagers that walk/sleep/gossip in speech bubbles, quest card (7 steps), mood faces per villager, context action bar with number keys, Space to wait, skip to evening/night/morning, dialogue with quick replies, gifts and whispers, Why? comic strip, Spyglass drawer (graph, spymaster, inspector), toasts, 7 achievements, win screen with stats. Backend: coins, gift cost, bribe rule.
+  Checks: full arc playable start → win in Chrome with no errors ✔; phone width with no sideways scroll ✔; 15 tests ✔.
