@@ -1,25 +1,13 @@
-# Hearsay — *Everyone's talking about you.*
+# Hearsay: *Everyone's talking about you.*
 
-**NPCs that remember what you did, and gossip about it.** Hearsay is a small web game and an open-source memory engine. Every villager's memories, beliefs and relationships live in a [FalkorDB](https://www.falkordb.com/) graph. When you do something, the villagers who saw it remember it. When villagers meet, rumours travel along their trust relationships and get worse with every retelling. Villagers who never saw you act on what they've *heard*, and when you ask **"Why?"**, they show you exactly who told whom.
-
-> Steal an apple. Only Old Tomas sees it. That evening at the inn, Tomas and Pip tell Bertha, and Bertha tells Captain Ilsa: *"took an apple"* → *"stole a basket"* → *"robbed the market"*. Next morning the guard, who never saw a thing, blocks the gate. Ask her why: *"I heard it from Bertha; Bertha heard it from Old Tomas; Old Tomas saw it first-hand."* The path lights up in the graph, with the Cypher query that found it.
-
-![Third-person 3D: the inn crowd at dusk, mood rings at their feet](docs/screenshots/3d-inn.png)
-
-## How to play
-Walk around a tiny low-poly 3D village in third person (WASD/arrows to move, drag to look around, scroll to zoom, click to walk; a 2D map view is one click away). A 7-step quest teaches everything:
-1. Arrive hungry with 5 coins and walk to the market. 2. Steal an apple (Old Tomas sees it).
-3. Skip to the evening: watch the story spread at the inn in speech bubbles, getting worse each time.
-4. Try to leave: the guard, who never saw a thing, blocks the gate. 5. Ask her **"Why?"** to see the exact chain of who told whom.
-6. Clear your name by working the gossip network (gifts to a suspicious guard count as bribes). 7. Escape.
-Then hunt 7 achievements. The 🔭 Spyglass shows the trust graph, PageRank, cliques, rumour routes and every Cypher query as it runs.
-
-![Why? traces the rumour back to the source](docs/screenshots/why.png)
-
-**Docs:** [How to play](docs/HOW_TO_PLAY.md) · [Reading the graph (every chart in the UI explained)](docs/READING_THE_GRAPH.md) · [Architecture](docs/ARCHITECTURE.md) · [Measured results](docs/results.md) · [Decisions](DECISIONS.md)
+**A memory engine that lets game characters remember what you did, gossip about it, and explain exactly who told whom, built on a [FalkorDB](https://www.falkordb.com/) graph.** It's playable here as a small 3D village. The same engine is a baseline for NPC memory in any open-world or story game.
 
 **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 **Tracks:** Track 02 — **Agent Memory and Coordination** (primary) · Track 01 — **Agents That Act on Connected Data**
+
+**Docs:** [How to play](docs/HOW_TO_PLAY.md) · [Reading the graph (every chart in the UI explained)](docs/READING_THE_GRAPH.md) · [Architecture](docs/ARCHITECTURE.md) · [Measured results](docs/results.md) · [Decisions](DECISIONS.md)
+
+![Third-person 3D: the inn crowd at dusk, mood rings at their feet](docs/screenshots/3d-inn.png)
 
 ## Why this is a baseline for NPC memory in any game
 
@@ -69,6 +57,22 @@ Measured on a laptop ([docs/results.md](docs/results.md)): reading a character's
 - batch each tick's updates into a few large queries.
 
 The model and the queries stay the same. [docs/ARCHITECTURE.md §11](docs/ARCHITECTURE.md#11-using-the-engine-in-another-game) has the details.
+
+## The demo: one stolen apple
+
+Every villager's memories, beliefs and relationships live in the graph. Villagers who see you act remember it. When villagers meet, rumours travel along their trust relationships and get worse with every retelling. Villagers who never saw you act on what they've *heard*, and when you ask **"Why?"**, they show you who told whom.
+
+> Steal an apple. Only Old Tomas sees it. That evening at the inn, Tomas and Pip tell Bertha, and Bertha tells Captain Ilsa: *"took an apple"* → *"stole a basket"* → *"robbed the market"*. Next morning the guard, who never saw a thing, blocks the gate. Ask her why: *"I heard it from Bertha; Bertha heard it from Old Tomas; Old Tomas saw it first-hand."* The path lights up in the graph, with the Cypher query that found it.
+
+## How to play
+Walk around a tiny low-poly 3D village in third person (WASD/arrows to move, drag to look around, scroll to zoom, click to walk; a 2D map view is one click away). A 7-step quest teaches everything:
+1. Arrive hungry with 5 coins and walk to the market. 2. Steal an apple (Old Tomas sees it).
+3. Skip to the evening: watch the story spread at the inn in speech bubbles, getting worse each time.
+4. Try to leave: the guard, who never saw a thing, blocks the gate. 5. Ask her **"Why?"** to see the exact chain of who told whom.
+6. Clear your name by working the gossip network (gifts to a suspicious guard count as bribes). 7. Escape.
+Then hunt 7 achievements. The 🔭 Spyglass shows the trust graph, PageRank, cliques, rumour routes and every Cypher query as it runs.
+
+![Why? traces the rumour back to the source](docs/screenshots/why.png)
 
 ## Run it
 
