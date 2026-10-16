@@ -16,6 +16,8 @@ Then hunt 7 achievements. The 🔭 Spyglass shows the trust graph, PageRank, cli
 
 ![Why? traces the rumour back to the source](docs/screenshots/why.png)
 
+**Docs:** [How to play](docs/HOW_TO_PLAY.md) · [Reading the graph (every chart in the UI explained)](docs/READING_THE_GRAPH.md) · [Architecture](docs/ARCHITECTURE.md) · [Measured results](docs/results.md) · [Decisions](DECISIONS.md)
+
 **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 **Tracks:** Track 02 — **Agent Memory and Coordination** (primary) · Track 01 — **Agents That Act on Connected Data**
 

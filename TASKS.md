@@ -8,6 +8,7 @@ Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its che
 **Game (H19):** done. Canvas 2D village, 7-step quest, Why? comic strip, achievements, win screen; the full story was played end to end in headless Chrome (Playwright, script in the session scratchpad) with zero console errors. Screenshots in `docs/screenshots/`.
 **AI:** the key is in `.env` (gitignored; moved out of `.env.example`). AI Studio Gemma 4 is slow and flaky (see DECISIONS), so local play uses Ollama `gemma3:4b`. Real-model grounding: 0/50 invented names.
 **3D (H20):** done. Third-person Three.js village with a 2D toggle; tested headless with zero errors.
+**Docs + video (H21):** done. `docs/HOW_TO_PLAY.md`, `docs/READING_THE_GRAPH.md`, `docs/ARCHITECTURE.md`; narrated walkthrough at `media/hearsay-walkthrough.mp4` (3:18, gitignored; upload it to YouTube/Loom).
 **Next up:** you play it and give feedback → deploy (H17; hosted AI = AI Studio Gemma 4 with template fallback) → video/blog (H18).
 **Waiting on the user:**
 - A public GitHub repo (H16 links), plus FalkorDB Cloud + Render accounts for H17.
@@ -64,3 +65,5 @@ Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its che
   Checks: full arc playable start → win in Chrome with no errors ✔; phone width with no sideways scroll ✔; 15 tests ✔.
 - [x] **H20 3D third-person** — Three.js village from primitives (buildings, stalls, well, gate towers, trees, cottages), characters with role props (hat, helmet + spear, hammer, apron, robe, cap, backpack), leg-swing walk, mood rings, day/dusk/night sky + glowing windows, DOM-overlay name tags/bubbles/prompts, third-person camera (WASD relative to camera, drag to orbit, scroll zoom, click to walk), solid buildings that fade when blocking the camera, 2D toggle + WebGL fallback.
   Checks: 3D playtest (walk, steal, evening gossip, orbit) with no errors ✔; 2D full arc still wins ✔; 15 tests ✔.
+- [x] **H21 Docs + walkthrough video** — player guide, a guide to every graph/panel in the UI (with demo numbers), architecture doc (overview, data model, request flows, tick, agent loop, AI usage, concurrency, API, deployment, use in other games, glossary). Video: full story played in 3D with GPU Chrome (Playwright), Windows TTS narration (17 lines) + burned-in captions, aligned to caption changes detected in the frames, muxed with ffmpeg.
+  Checks: video plays 3:18 with audio (mean −21 dB) ✔; docs match the code and the demo numbers ✔.
