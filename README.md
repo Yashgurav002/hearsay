@@ -21,6 +21,55 @@ Then hunt 7 achievements. The 🔭 Spyglass shows the trust graph, PageRank, cli
 **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 **Tracks:** Track 02 — **Agent Memory and Coordination** (primary) · Track 01 — **Agents That Act on Connected Data**
 
+## Why this is a baseline for NPC memory in any game
+
+The village is a demo. The reusable part is the engine underneath: **a graph that stores what every character saw, what they've heard, from whom, and how sure they are, and spreads it realistically.** Any game where characters should react to the player's reputation can sit on top of it, whether that's a GTA-style city, a Witcher-style fantasy world, a western, or a small social sim.
+
+### What games usually do today, and what the graph adds
+
+| Typical approach | Its limit | With a Hearsay-style graph |
+|---|---|---|
+| One **reputation / honour meter** per player or region | Everyone "knows" at once; nobody knows *why* | Each character has their **own** belief, with a confidence and a **source** |
+| **Witnesses** report a crime and a bounty appears | Instant and global, then it resets | News travels **person to person, along trust**, and takes time to reach the next town |
+| Scripted barks ("I heard about you…") | The same line everywhere, unrelated to what really happened | Lines come from the character's actual belief, and stories **exaggerate** as they're retold |
+| Reputation fixed by waiting or paying a fine | No gameplay in repairing it | You repair it by **convincing the right people**, which is a puzzle over the social network |
+| Debugging "why does this NPC hate me?" | Hard to trace | One query returns the exact chain: *Ilsa ← Bertha ← Tomas (saw it)* |
+
+The graph does work a single number or a list can't:
+- a **variable-length path** gives provenance (who told whom);
+- **trust edges** decide who hears what;
+- **PageRank**, **communities** and **shortest paths** tell the game (or the player) who matters and how a story will travel.
+
+### What it could look like in an open world (design sketches)
+
+- **Crime city (GTA-style):** a shop clerk sees a robbery and tells their cousin, who runs with a gang. The gang now prices you differently, while the police only hear the version that reached an informant, three hops and two exaggerations later. A *fixer* character uses shortest-path to plant a cover story.
+- **Fantasy RPG (Witcher-style):** you kill a monster outside a village. The innkeeper turns it into "slew a griffin bare-handed", a travelling bard carries it to the next town, and a sceptical alderman (needs two sources) still doesn't believe it. Ask "Why?" and he names the bard.
+- **Western / honour system:** a stranger sees you help a rancher. The sheriff, who trusts the rancher, softens toward you before you've met. A bounty hunter who trusts nobody ignores it.
+- **Detective or social games:** tracing a rumour back to its source *is* the gameplay: the provenance query is the mechanic.
+
+### How a game would plug it in
+
+```mermaid
+flowchart LR
+  G["Game engine<br/>(Unity · Unreal · Godot · web)"] -- "event happened here,<br/>these NPCs are here,<br/>advance time" --> H["Hearsay engine<br/>(FastAPI + Cypher queries)"]
+  H -- "NPC believes X about you (conf 0.6),<br/>opinion −0.5 → rule fires,<br/>here's why: A ← B ← C" --> G
+  H <--> F[("FalkorDB<br/>one graph per save / region")]
+```
+
+- **Small contract:** the game sends *events* and *who is where*, and gets back *beliefs*, *opinions*, triggered *rules* and *explanations*. It's HTTP, so it works from any engine.
+- **Content is data, not code:** characters, schedules, trust, behaviour rules and the "how stories get worse" ladders all live in [`backend/seed/village.json`](backend/seed/village.json) and `Rule` nodes. A designer can add "the blacksmith refuses to sell below −0.5" without touching code.
+- **The AI is optional:** decisions come from the graph. A language model (or none) only words the lines, so characters can't invent knowledge (0 / 50 in the grounding test).
+
+### Is it fast enough?
+Measured on a laptop ([docs/results.md](docs/results.md)): reading a character's beliefs and opinion takes **~1 ms (p95 2.3 ms)**, flat from 10 to **500 separate worlds** in one FalkorDB instance, and a full hour of village gossip takes ~15 ms. That's cheap enough to run per character, per interaction.
+
+**Honest scope:** this prototype has 6 characters in one village. For a GTA-sized world you would:
+- simulate gossip in full only near the player and in story-relevant groups (a "level of detail" for gossip);
+- split the world into region graphs that travelling characters carry stories between;
+- batch each tick's updates into a few large queries.
+
+The model and the queries stay the same. [docs/ARCHITECTURE.md §11](docs/ARCHITECTURE.md#11-using-the-engine-in-another-game) has the details.
+
 ## Run it
 
 ### Docker (one command)
