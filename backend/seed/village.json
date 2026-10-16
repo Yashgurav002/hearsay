@@ -1,0 +1,68 @@
+{
+  "start_tick": 6,
+  "places": [
+    {"id": "market", "name": "The Market"},
+    {"id": "inn", "name": "The Crooked Kettle"},
+    {"id": "forge", "name": "The Forge"},
+    {"id": "chapel", "name": "St. Aldric's Chapel"},
+    {"id": "well", "name": "The Well"},
+    {"id": "gate", "name": "The Town Gate"}
+  ],
+  "villagers": [
+    {"id": "tomas", "name": "Old Tomas", "role": "merchant", "gossip": 0.7, "exaggeration": 0.5,
+     "persona": "grumpy old fruit merchant who holds grudges and counts every coin",
+     "schedule": [[6, 17, "market"], [17, 23, "inn"]]},
+    {"id": "bertha", "name": "Bertha", "role": "innkeeper", "gossip": 0.95, "exaggeration": 0.4,
+     "persona": "warm, chatty innkeeper who knows everyone's business",
+     "schedule": [[6, 10, "well"], [10, 23, "inn"]]},
+    {"id": "ilsa", "name": "Captain Ilsa", "role": "guard", "gossip": 0.3, "exaggeration": 0.1,
+     "persona": "strict, clipped town guard captain who acts on reports",
+     "schedule": [[6, 20, "gate"], [20, 22, "inn"], [22, 23, "gate"]]},
+    {"id": "mira", "name": "Mira", "role": "blacksmith", "gossip": 0.4, "exaggeration": 0.0,
+     "persona": "honest, blunt blacksmith and a sceptic who wants two sources before believing anything",
+     "schedule": [[6, 17, "forge"], [17, 23, "inn"]]},
+    {"id": "pip", "name": "Pip", "role": "child", "gossip": 1.0, "exaggeration": 0.8,
+     "persona": "excitable village child who repeats everything they hear",
+     "schedule": [[6, 10, "well"], [10, 12, "forge"], [12, 14, "gate"], [14, 15, "chapel"], [15, 17, "market"], [17, 23, "inn"]]},
+    {"id": "anselm", "name": "Father Anselm", "role": "priest", "gossip": 0.1, "exaggeration": 0.0,
+     "persona": "gentle, discreet old priest who believes in forgiveness",
+     "schedule": [[6, 10, "well"], [10, 23, "chapel"]]}
+  ],
+  "trust": [
+    {"from": "tomas", "to": "bertha", "weight": 0.8},
+    {"from": "tomas", "to": "mira", "weight": 0.3},
+    {"from": "bertha", "to": "tomas", "weight": 0.8},
+    {"from": "bertha", "to": "ilsa", "weight": 0.6},
+    {"from": "bertha", "to": "mira", "weight": 0.5},
+    {"from": "bertha", "to": "anselm", "weight": 0.5},
+    {"from": "bertha", "to": "pip", "weight": 0.25},
+    {"from": "ilsa", "to": "bertha", "weight": 0.75},
+    {"from": "ilsa", "to": "anselm", "weight": 0.5},
+    {"from": "mira", "to": "anselm", "weight": 0.9},
+    {"from": "mira", "to": "bertha", "weight": 0.4},
+    {"from": "mira", "to": "pip", "weight": 0.25},
+    {"from": "anselm", "to": "mira", "weight": 0.7},
+    {"from": "anselm", "to": "bertha", "weight": 0.4},
+    {"from": "anselm", "to": "pip", "weight": 0.25},
+    {"from": "pip", "to": "bertha", "weight": 0.6},
+    {"from": "pip", "to": "tomas", "weight": 0.5},
+    {"from": "pip", "to": "mira", "weight": 0.5},
+    {"from": "pip", "to": "anselm", "weight": 0.5},
+    {"from": "pip", "to": "ilsa", "weight": 0.6}
+  ],
+  "rules": [
+    {"id": "guard_block", "villager": "ilsa", "role": "guard", "condition": "opinion_below", "action": "block_gate", "threshold": -0.3},
+    {"id": "guard_notice", "villager": "ilsa", "role": "guard", "condition": "opinion_below", "action": "post_notice", "threshold": -0.6},
+    {"id": "merchant_price", "villager": "tomas", "role": "merchant", "condition": "always", "action": "scale_price", "threshold": 0.5},
+    {"id": "inn_refuse", "villager": "bertha", "role": "innkeeper", "condition": "opinion_below", "action": "refuse", "threshold": -0.5},
+    {"id": "inn_gossip", "villager": "bertha", "role": "innkeeper", "condition": "opinion_above", "action": "share_gossip", "threshold": 0.3},
+    {"id": "smith_sceptic", "villager": "mira", "role": "blacksmith", "condition": "always", "action": "need_two_sources", "threshold": 2},
+    {"id": "priest_ignore", "villager": "anselm", "role": "priest", "condition": "always", "action": "ignore_gossip", "threshold": 0},
+    {"id": "priest_forgive", "villager": "anselm", "role": "priest", "condition": "always", "action": "forgive", "threshold": 0},
+    {"id": "child_repeat", "villager": "pip", "role": "child", "condition": "always", "action": "share_gossip", "threshold": 0}
+  ],
+  "ladders": {
+    "theft": ["took an apple from Tomas's stall", "stole a basket of apples", "robbed Tomas's stall", "robbed the market", "is part of a gang of thieves"],
+    "good_deed": ["fetched water for Father Anselm", "helped at the chapel all morning", "is always helping people", "saved the chapel", "is practically a saint"]
+  }
+}

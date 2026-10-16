@@ -1,0 +1,19 @@
+services:
+  falkordb:
+    image: falkordb/falkordb:latest
+    ports: ["6379:6379", "3000:3000"]  # 3000 = FalkorDB Browser
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      retries: 30
+  app:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      FALKORDB_HOST: falkordb
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gemma-3-27b-it}
+      LLM_DISABLED: ${LLM_DISABLED:-false}
+    depends_on:
+      falkordb:
+        condition: service_healthy
