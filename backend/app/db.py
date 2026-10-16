@@ -8,7 +8,7 @@ from pathlib import Path
 from falkordb import FalkorDB
 
 QUERY_DIR = Path(__file__).resolve().parent.parent / "queries"
-QUERIES = {p.stem: p.read_text() for p in QUERY_DIR.glob("*.cypher")}
+QUERIES = {p.stem: p.read_text(encoding="utf-8") for p in QUERY_DIR.glob("*.cypher")}
 TEMPLATE = "hearsay_template"
 PLAYER_ID = re.compile(r"^[a-z0-9]{6,32}$")
 

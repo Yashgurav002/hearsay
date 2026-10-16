@@ -6,7 +6,7 @@ from pathlib import Path
 from .. import llm
 from ..db import World
 
-VILLAGE = json.loads((Path(__file__).resolve().parents[2] / "seed" / "village.json").read_text())
+VILLAGE = json.loads((Path(__file__).resolve().parents[2] / "seed" / "village.json").read_text(encoding="utf-8"))
 LADDERS = VILLAGE["ladders"]
 SENTIMENT = {"theft": -1.0, "good_deed": 1.0}
 JUICE = {"theft": 0.9, "good_deed": 0.6}
