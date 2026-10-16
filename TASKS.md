@@ -2,11 +2,15 @@
 
 Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its checks pass**. Status: `[ ]` todo · `[~]` in progress · `[x]` done.
 
-## Where we are (updated 2026-10-16 night)
+## Where we are (updated 2026-10-16, late night)
 
-**Done:** H00–H12. The backend is complete: engine, memory, agents, spymaster and API. 13 tests pass (`python -m pytest backend/tests`).
-**In progress:** H13 frontend.
-**Waiting on the user:** an `LLM_API_KEY` (Google AI Studio) to turn on AI voices. Until then, templates are used.
+**Done:** H00–H12, H15, H16. Backend, frontend build, measurements and README are done. 14 tests pass (`python -m pytest backend/tests`). `docker compose up --build` verified from the repo: it seeds, serves the UI on :8000 and the API answers.
+**In progress:** H13/H14: the UI builds and the API flow is verified over HTTP, but it hasn't been played in a browser yet (the Chrome extension wasn't connected).
+**Next up:** play the wow moment in the browser and fix UI issues → measure grounding with the real model → deploy (H17) → video/blog (H18).
+**Waiting on the user:**
+- An `LLM_API_KEY` (Google AI Studio) to turn on AI voices; templates are used until then. Then run `python scripts/grounding_check.py 50` for the real-model grounding number.
+- A public GitHub repo (H16 links), plus FalkorDB Cloud + Render accounts for H17.
+- README "AI assistance disclosure": add which parts you wrote or reviewed yourself. Check the LICENSE name ("Yash Gurav").
 **Decisions made:** see `DECISIONS.md` (the FalkorDB quirks found in H00 are listed there).
 
 **Run locally:** `docker run -d --name falkordb -p 6379:6379 -p 3000:3000 falkordb/falkordb:latest` → `cd backend && uvicorn app.main:app --reload` (seeds the template on first start) → `cd frontend && npm run dev`. Demo: `python scripts/demo_scenario.py`.
@@ -40,14 +44,15 @@ Each task = one issue, from `HEARSAY_PRD.md`. A task is **done only when its che
 
 ## Wave 3 — Frontend
 
-- [~] **H13 Frontend** — Vite + React + TS: village map, action bar, dialogue + Why?, gossip graph (react-force-graph-2d) animating hops, spymaster panel, under-the-hood drawer, welcome-back banner. Deps: H11, H12.
+- [~] **H13 Frontend** (built; browser playtest pending) — Vite + React + TS: village map, action bar, dialogue + Why?, gossip graph (react-force-graph-2d) animating hops, spymaster panel, under-the-hood drawer, welcome-back banner. Deps: H11, H12.
   Checks: full wow moment playable in the browser.
 
 ## Wave 4 — Persistence, proof, ship
 
 - [~] **H14 Sessions + shared state** — per-player graph copy ✔, catch-up ticks ✔, welcome-back summary ✔ (API), guard notice ✔ (Q-NOTICE-POST/READ), nightly impressions ✔ (Q-IMPRESSION). Remaining: banner in the UI, two-browser check. Deps: H11.
   Checks: reopen → village remembers; a second player gets a clean village.
-- [ ] **H15 Measurements** — `test_no_invented_knowledge`, `scripts/load_test.py` (10/100 worlds), latency p50/p95 → `docs/results.md`. Deps: H11.
-- [ ] **H16 README** — setup, graph model, query catalogue, architecture, measurements, tracks, AI disclosure, synthetic-data statement. Deps: all.
-- [ ] **H17 Deploy** — FalkorDB Cloud + one container (backend serves the frontend) on Render, or a verified `docker compose up` from a fresh clone. **Needs user accounts.**
+- [x] **H15 Measurements** — `test_no_invented_knowledge`, `scripts/load_test.py` (10/100 worlds), latency p50/p95 → `docs/results.md`. Deps: H11.
+  ✔ 500 worlds alive, read p95 2.3 ms; spread stats over 50 seeds; grounding 0/50 (templates). Found and fixed: concurrent `GRAPH.COPY` fails with "could not fork".
+- [x] **H16 README** — setup, graph model, query catalogue, architecture, measurements, tracks, AI disclosure, synthetic-data statement. Deps: all.
+- [~] **H17 Deploy** — local `docker compose up --build` ✔ verified. Cloud: FalkorDB Cloud + one container (the backend serves the frontend) on Render. **Needs user accounts.**
 - [ ] **H18 Video + blog + submit** — user-owned (§17–19).
